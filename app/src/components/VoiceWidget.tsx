@@ -29,7 +29,7 @@ export default function VoiceWidget() {
       vapiRef.current = vapi;
       vapi.on("call-start", () => {
         setIsActive(true); setIsConnecting(false);
-        setTranscript([{ role: "assistant", text: "Hi! I'm Lisa, your AI receptionist at Smile Dental. How can I help you today?" }]);
+        setTranscript([{ role: "assistant", text: "Thank you for calling! This is Riley, your scheduling assistant. How may I help you today?" }]);
       });
       vapi.on("call-end", () => { setIsActive(false); setIsConnecting(false); });
       vapi.on("message", (message: any) => {
@@ -63,14 +63,14 @@ export default function VoiceWidget() {
             <div className="flex items-center space-x-2">
               <span className="text-xl">🎙️</span>
               <div>
-                <p className="font-semibold text-sm">Lisa — AI Receptionist</p>
+                <p className="font-semibold text-sm">Riley — AI Receptionist</p>
                 <p className="text-xs text-teal-100">{isActive ? "Listening..." : isConnecting ? "Connecting..." : "Click to start"}</p>
               </div>
             </div>
             <button onClick={() => { setIsOpen(false); if (isActive) endCall(); }} className="text-white/80 hover:text-white">✕</button>
           </div>
           <div className="h-64 overflow-y-auto p-4 space-y-3 bg-gray-50">
-            {transcript.length === 0 && <p className="text-center text-gray-400 text-sm mt-8">Click the microphone button to start talking with Lisa</p>}
+            {transcript.length === 0 && <p className="text-center text-gray-400 text-sm mt-8">Click the microphone button to start talking with Riley</p>}
             {transcript.map((msg, i) => (
               <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
                 <div className={`max-w-[80%] rounded-xl px-3 py-2 text-sm ${msg.role === "user" ? "bg-teal-600 text-white" : "bg-white border border-gray-200 text-gray-700"}`}>{msg.text}</div>
@@ -91,7 +91,7 @@ export default function VoiceWidget() {
           </div>
         </div>
       )}
-      <button onClick={() => setIsOpen(!isOpen)} className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white text-2xl transition-all hover:scale-110 ${isActive ? "bg-red-500 animate-pulse" : "bg-teal-600 hover:bg-teal-700"}`} title="Talk to Lisa, our AI receptionist">
+      <button onClick={() => setIsOpen(!isOpen)} className={`fixed bottom-6 right-4 sm:right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center text-white text-2xl transition-all hover:scale-110 ${isActive ? "bg-red-500 animate-pulse" : "bg-teal-600 hover:bg-teal-700"}`} title="Talk to Riley, our AI receptionist">
         {isActive ? "🎙️" : "💬"}
       </button>
     </>

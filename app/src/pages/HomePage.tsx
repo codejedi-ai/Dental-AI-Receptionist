@@ -80,7 +80,7 @@ export default function HomePage() {
       <section className="py-16 bg-teal-700 text-white">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold mb-4">Ready for a Healthier Smile?</h2>
-          <p className="text-teal-100 text-lg mb-8">Book your appointment today or talk to Lisa, our AI receptionist, anytime.</p>
+          <p className="text-teal-100 text-lg mb-8">Book your appointment today or talk to Riley, our AI receptionist, anytime.</p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/book" className="inline-flex items-center justify-center bg-white text-teal-700 px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-teal-50 transition-colors">Book Online</Link>
             <a href={`tel:${clinicConfig.phone.replace(/[^0-9]/g, "")}`} className="inline-flex items-center justify-center border-2 border-white/30 text-white px-8 py-3.5 rounded-xl font-semibold text-lg hover:bg-white/10 transition-colors">📞 Call {clinicConfig.phone}</a>
