@@ -1,0 +1,10 @@
+node_modules/
+.next/
+dist/
+.env
+*.pyc
+__pycache__/
+.DS_Store
+*.db
+*.sqlite
+.assistant-id

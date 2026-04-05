@@ -1,0 +1,24 @@
+{
+  "name": "smiledental-vapi",
+  "version": "1.0.0",
+  "description": "SmileDental voice AI agent powered by Vapi",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsx watch src/server.ts",
+    "start": "node dist/server.js",
+    "setup": "tsx src/setup.ts",
+    "test-call": "tsx src/test-call.ts"
+  },
+  "dependencies": {
+    "@vapi-ai/server-sdk": "^1.0.0",
+    "express": "^4.21.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.6.0"
+  }
+}
