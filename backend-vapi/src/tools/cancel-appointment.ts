@@ -1,8 +1,6 @@
-/**
- * Cancel an existing appointment.
- */
-
-import { getBookings } from "./book-appointment";
+import { findEvent, deleteCalendarEvent } from "../services/calendar";
+import { sendCancellationEmail } from "../services/email";
+import { findAppointment, cancelAppointmentById } from "../services/appointment-store";
 
 interface CancelRequest {
   patientName: string;
@@ -10,24 +8,46 @@ interface CancelRequest {
   date: string;
 }
 
-export function cancelAppointment(params: CancelRequest): string {
+export async function cancelAppointment(params: CancelRequest): Promise<string> {
   const { patientName, date } = params;
 
-  // In production: query your scheduling system
-  // For demo: check in-memory bookings
-  const bookings = getBookings();
-  const found = bookings.find(
-    (b) =>
-      b.patientName.toLowerCase() === patientName.toLowerCase() &&
-      b.date === date
-  );
+  // Look up in local store first (always available), then fall back to Google Calendar
+  const localAppt = findAppointment(patientName, date);
+  const calEvent = await findEvent(patientName, date);
 
-  if (!found) {
-    return `I couldn't find an appointment for ${patientName} on ${date}. Could you double-check the name and date? Or I can look up by phone number.`;
+  if (!localAppt && !calEvent) {
+    return `I couldn't find an appointment for ${patientName} on ${date}. Could you double-check the name and date?`;
   }
 
-  // In production: actually delete from the system
-  console.log(`❌ CANCELLED: ${patientName} | ${date} ${found.time} | ${found.dentist}`);
+  const service = localAppt?.service ?? calEvent?.summary?.split("—")[0]?.trim() ?? "appointment";
+  const startTime = localAppt?.time ?? (calEvent?.start?.dateTime
+    ? new Date(calEvent.start.dateTime).toLocaleTimeString("en-CA", { hour: "2-digit", minute: "2-digit" })
+    : "");
+  const patientEmail = localAppt?.patientEmail ?? calEvent?.attendees?.[0]?.email;
 
-  return `I've cancelled ${patientName}'s ${found.service} appointment with ${found.dentist} on ${date} at ${found.time}. Would you like to rebook for a different time?`;
+  // Cancel in local store
+  if (localAppt) {
+    cancelAppointmentById(localAppt.id);
+  }
+
+  // Delete from Google Calendar
+  const eventId = localAppt?.googleEventId ?? calEvent?.id;
+  if (eventId) {
+    await deleteCalendarEvent(eventId).catch((err) =>
+      console.error("Calendar delete failed:", err)
+    );
+  }
+
+  // Email the patient
+  if (patientEmail) {
+    sendCancellationEmail({
+      patientName,
+      patientEmail,
+      date,
+      time: startTime,
+      service,
+    }).catch((err) => console.error("Cancellation email failed:", err));
+  }
+
+  return `Cancelled! ${patientName}'s ${service} on ${date}${startTime ? ` at ${startTime}` : ""} has been removed.${patientEmail ? " A cancellation email is on its way." : ""} Would you like to rebook?`;
 }

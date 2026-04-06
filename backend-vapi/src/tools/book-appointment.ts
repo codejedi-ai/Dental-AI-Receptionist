@@ -1,13 +1,11 @@
-/**
- * Book an appointment.
- *
- * In production, this would write to your clinic's scheduling system
- * and send confirmation SMS/email to the patient.
- */
+import { createCalendarEvent, BookingDetails } from "../services/calendar";
+import { sendConfirmationEmail } from "../services/email";
+import { saveAppointment } from "../services/appointment-store";
 
 interface BookingRequest {
   patientName: string;
   patientPhone: string;
+  patientEmail?: string;
   date: string;
   time: string;
   dentist: string;
@@ -15,33 +13,29 @@ interface BookingRequest {
   notes?: string;
 }
 
-// In-memory store for demo — replace with database
-const bookings: BookingRequest[] = [];
+export async function bookAppointment(params: BookingRequest): Promise<string> {
+  const { patientName, patientPhone, patientEmail, date, time, dentist, service, notes } = params;
 
-export function bookAppointment(params: BookingRequest): string {
-  const { patientName, patientPhone, date, time, dentist, service, notes } = params;
-
-  // Basic validation
   if (!patientName || !date || !time || !dentist) {
     return "I'm missing some details. Could you confirm the patient name, date, time, and dentist?";
   }
 
-  // Check for duplicate
-  const duplicate = bookings.find(
-    (b) => b.patientName === patientName && b.date === date && b.time === time
-  );
-  if (duplicate) {
-    return `It looks like ${patientName} already has an appointment on ${date} at ${time}. Would you like to reschedule instead?`;
+  // Create Google Calendar event
+  const details: BookingDetails = { patientName, patientPhone, patientEmail, date, time, dentist, service, notes };
+  const eventId = await createCalendarEvent(details);
+
+  // Persist to local JSON store
+  saveAppointment({ patientName, patientPhone, patientEmail, date, time, dentist, service, notes, googleEventId: eventId ?? undefined });
+
+  // Send confirmation email (non-blocking — don't fail the booking if email fails)
+  if (patientEmail) {
+    sendConfirmationEmail(details).catch((err) =>
+      console.error("Email send failed:", err)
+    );
   }
 
-  // Store the booking
-  bookings.push(params);
+  const calendarNote = eventId ? " It's on the clinic's calendar." : "";
+  const emailNote = patientEmail ? ` A confirmation email will be sent to ${patientEmail}.` : ` We'll confirm by phone at ${patientPhone}.`;
 
-  console.log(`📅 BOOKED: ${patientName} | ${date} ${time} | ${dentist} | ${service} | ${notes || "no notes"}`);
-
-  return `Great! I've booked ${patientName} for a ${service} appointment with ${dentist} on ${date} at ${time}. We'll send a confirmation text to ${patientPhone}. Please arrive 15 minutes early and bring your insurance card. Is there anything else I can help with?`;
-}
-
-export function getBookings(): BookingRequest[] {
-  return [...bookings];
+  return `Booked! ${patientName} has a ${service} appointment with ${dentist} on ${date} at ${time}.${calendarNote}${emailNote} Please arrive 15 minutes early and bring your insurance card. Anything else?`;
 }

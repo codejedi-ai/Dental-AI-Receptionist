@@ -21,6 +21,10 @@ services:
       PORT: ${PORT:-3000}
       WEBHOOK_URL: ${WEBHOOK_URL:-}   # overwritten at runtime by entrypoint
 
+      # Email (SMTP)
+      SMTP_EMAIL: ${SMTP_EMAIL}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+
       # Tailscale Funnel
       TAILSCALE_AUTH_KEY: ${TAILSCALE_AUTH_KEY}
       TAILSCALE_HOSTNAME: ${TAILSCALE_HOSTNAME:-smiledental-webhook}
@@ -34,6 +38,10 @@ services:
       # ── tailscale state ───────────────────────────────────────────────
       # Persist auth state so re-starts don't need a new auth key
       - tailscale-state:/var/lib/tailscale
+
+      # ── appointment data ──────────────────────────────────────────────
+      # JSON appointment files — survives container restarts
+      - appointment-data:/app/data
 
     ports:
       # Expose locally if you want direct access too (optional)
@@ -54,3 +62,4 @@ volumes:
     # Or add another service with:
     #   volumes: [webhook-urls:/shared]
   tailscale-state:
+  appointment-data:

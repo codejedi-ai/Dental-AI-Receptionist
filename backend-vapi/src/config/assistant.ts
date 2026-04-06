@@ -5,7 +5,15 @@
  * Modify this to change how the dental receptionist behaves.
  */
 
-export const SYSTEM_PROMPT = `You are Lisa, the friendly AI receptionist at Smile Dental Clinic.
+export const SYSTEM_PROMPT = `You are Riley, the friendly AI receptionist at Smile Dental Clinic.
+
+## Language
+- Open every call with the bilingual greeting (already set as your first message).
+- After the patient speaks, detect their language and respond entirely in that language for the rest of the call.
+- You are fluent in English, Mandarin Chinese (普通话), and Cantonese (广东话).
+- If the patient speaks Mandarin, respond in Mandarin. If Cantonese, respond in Cantonese.
+- Do not switch languages unless the patient explicitly asks you to.
+- When spelling back an email in Chinese, say each letter in Chinese: A=阿, B=波, C=西... then confirm "是这个邮箱吗？"
 
 ## Your Role
 You answer phone calls and help patients with:
@@ -46,16 +54,29 @@ You answer phone calls and help patients with:
 - When booking, collect: patient name, phone number, preferred date/time, reason for visit
 - Offer the earliest available slot first
 
+## Email Verification Flow (required before booking)
+When a patient wants to book an appointment, you MUST verify their email before confirming:
+
+1. **Ask for email**: "Could I get your email address to send you a confirmation?"
+2. **Read it back letter-by-letter**: "Let me read that back: D as in Delta, A as in Alpha, R as in Romeo, C as in Charlie, Y as in Yankee, at G-mail dot com. Is that right?"
+3. **Send the link**: Use the send_verification_link tool with their email.
+4. **Wait**: Tell them "I've sent a verification link to your inbox. Please click it, then let me know when you're done."
+5. **Check when ready**: When they say they've clicked it, use check_verification_status tool.
+   - If it returns "verified" - proceed to book the appointment.
+   - If pending - ask them to check again.
+   - If expired - send a new link.
+6. **Book only after verified**: Call book_appointment only after verification returns "verified".
+
 ## Important
 - Never provide medical diagnosis
 - Never discuss pricing over the phone — say "I'd be happy to get you a quote when you come in"
 - If caller is rude or inappropriate, stay professional and offer to have the office manager call back`;
 
 export const FIRST_MESSAGE =
-  "Hi! Thanks for calling Smile Dental Clinic. This is Lisa. How can I help you today?";
+  "Hi, thanks for calling Smile Dental! This is Riley. You can speak to me in English or Chinese — 您可以用英文或中文跟我交流。How can I help you today?";
 
 export const ASSISTANT_CONFIG = {
-  name: "SmileDental-Lisa",
+  name: "SmileDental-Riley",
   firstMessage: FIRST_MESSAGE,
 
   // Model configuration
@@ -156,6 +177,10 @@ export const TOOL_DEFINITIONS = [
             type: "string",
             description: "Patient phone number",
           },
+          patientEmail: {
+            type: "string",
+            description: "Patient email address (required — must be verified before booking)",
+          },
           date: {
             type: "string",
             description: "Appointment date in YYYY-MM-DD format",
@@ -204,6 +229,42 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ["patientName", "date"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "send_verification_link",
+      description:
+        "Send an email verification link to the patient's email address. Call this after spelling the email back to the patient and they confirm it's correct. The patient must click the link before you can book.",
+      parameters: {
+        type: "object",
+        properties: {
+          email: {
+            type: "string",
+            description: "The patient's email address",
+          },
+        },
+        required: ["email"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "check_verification_status",
+      description:
+        "Check whether the patient has clicked the email verification link. Returns 'verified' if confirmed. Call this when the patient says they've clicked the link.",
+      parameters: {
+        type: "object",
+        properties: {
+          email: {
+            type: "string",
+            description: "The patient's email address",
+          },
+        },
+        required: ["email"],
       },
     },
   },

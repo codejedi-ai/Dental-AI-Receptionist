@@ -13,5 +13,5 @@
     "declaration": true
   },
   "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "src/test-call.ts"]
+  "exclude": ["node_modules", "dist", "src/test-call.ts", "src/auth/google-setup.ts", "src/update-assistant.ts", "src/setup.ts"]
 }

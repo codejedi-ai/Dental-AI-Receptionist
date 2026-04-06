@@ -37,8 +37,11 @@ COPY --from=builder /build/dist ./dist
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 
+# Persistent data directories
+RUN mkdir -p /app/data/appointments
+
 # /shared — other containers or the host mount here to read the tunnel URL
-VOLUME ["/shared", "/var/lib/tailscale"]
+VOLUME ["/shared", "/var/lib/tailscale", "/app/data"]
 
 EXPOSE 3000
 
