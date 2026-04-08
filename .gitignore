@@ -1,6 +1,6 @@
 node_modules/
 .next/
-dist/
+# dist/
 .env
 *.pyc
 __pycache__/
@@ -8,3 +8,4 @@ __pycache__/
 *.db
 *.sqlite
 .assistant-id
+backend/target/\nvapi-backend/vapi-server\napp/dist/\nbackend-node-old/dist/\nbackend-node-old/node_modules/\n

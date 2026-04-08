@@ -6,13 +6,12 @@ An AI-powered dental clinic system with a voice receptionist named **Lisa**. Pat
 
 ```
 SmileDental/
-├── app/                    # Next.js full-stack web application
-│   ├── src/app/(patient)/  # Patient-facing pages (home, services, book, about)
-│   ├── src/app/admin/      # Admin dashboard (appointments, patients, stats)
-│   ├── src/app/api/        # API routes + Vapi webhook
+├── app/                    # Vite + React clinic/admin frontend
+│   ├── src/pages/          # Patient and admin pages
 │   └── src/components/     # UI components + Voice widget
-├── backend-vapi/           # Vapi voice agent (TypeScript, webhook server)
-├── backend-realtime/       # LiveKit voice agent (Python, self-hosted alternative)
+├── backend/                # Unified backend (Vapi tools + clinic API)
+│   ├── src/routes/         # REST API (appointments, patients)
+│   └── src/tools/          # Vapi tool handlers
 └── engineering-notebook/   # System design documentation
 ```
 
@@ -22,7 +21,7 @@ SmileDental/
 cd app
 npm install
 npm run dev
-# Open http://localhost:3000
+# Open http://localhost:5173
 ```
 
 ## Features
@@ -36,8 +35,9 @@ npm run dev
 
 ## Tech Stack
 
-- **Next.js 14** (App Router) + **TypeScript** + **Tailwind CSS**
+- **Vite + React** + **TypeScript** + **Tailwind CSS**
 - **SQLite** via better-sqlite3
+- **JSON object store** in `backend/data/appointments/` for tool-side persisted artifacts
 - **Vapi** for voice AI (STT → LLM → TTS)
 - **GPT-4o** for conversation, **Deepgram** for transcription, **ElevenLabs** for voice
 

@@ -1,98 +1,138 @@
 version: "3.9"
 
-# ── Private internal network (no internet access for DB) ──
 networks:
   dental-internal:
     driver: bridge
-    internal: true          # blocks all outbound internet traffic
-
-  # ── Public network for Tailscale container ──
-  dental-public:
-    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
 
 services:
-  # ═══════════════════════════════════════════════════════════
-  #  VAPI WEBHOOK SERVER  (with Tailscale Funnel inside)
-  # ═══════════════════════════════════════════════════════════
-  vapi-webhook:
-    build: ./backend-vapi
-    container_name: smiledental-vapi
+  # ─────────────────────────────────────────────────────────────
+  # PostgreSQL — local relational DB (patients, appointments)
+  # ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    container_name: dental-postgres
     restart: unless-stopped
-
+    environment:
+      POSTGRES_DB: dental
+      POSTGRES_USER: dental
+      POSTGRES_PASSWORD: internal_pg_2024
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
-      - dental-public        # needs internet for Tailscale + Vapi callbacks
-      - dental-internal      # talk to app/DB
+      - dental-internal
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dental"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
 
-    # Tailscale needs these
+  # ─────────────────────────────────────────────────────────────
+  # MongoDB — local document DB (verifications, settings, logs)
+  # ─────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: dental-mongo
+    restart: unless-stopped
+    volumes:
+      - mongo-data:/data/db
+      - ./backend/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    networks:
+      - dental-internal
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ─────────────────────────────────────────────────────────────
+  # Go Vapi Backend — tsnet joins tailnet directly
+  # Vapi calls: https://dental-ai.<tailnet>.ts.net/api/tools
+  # ─────────────────────────────────────────────────────────────
+  vapi:
+    build: ./vapi-backend
+    container_name: dental-vapi
+    restart: unless-stopped
+    environment:
+      TAILSCALE_HOSTNAME: ${TAILSCALE_HOSTNAME:-dental-ai}
+      TAILSCALE_AUTH_KEY: ${TAILSCALE_AUTH_KEY}
+      DATABASE_URL: postgres://dental:internal_pg_2024@postgres:5432/dental
+      MONGO_URL: mongodb://mongo:27017/dental
+      MONGO_DB: dental
+    volumes:
+      - tsnet-state:/root/.local
     cap_add:
       - NET_ADMIN
-      - SYS_MODULE
     devices:
       - /dev/net/tun:/dev/net/tun
+    networks:
+      - dental-internal
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
 
+  # ─────────────────────────────────────────────────────────────
+  # Rust Browser Backend — frontend proxy, email sending
+  # ─────────────────────────────────────────────────────────────
+  browser:
+    build: ./backend
+    container_name: dental-browser
+    restart: unless-stopped
     environment:
-      VAPI_API_KEY: ${VAPI_API_KEY}
-      VAPI_PUBLIC_KEY: ${VAPI_PUBLIC_KEY}
-      VAPI_ASSISTANT_ID: ${VAPI_ASSISTANT_ID:-450435e9-4562-4ddd-8429-54584d3285a7}
-      PORT: 3000
-      WEBHOOK_URL: ""               # set by entrypoint at runtime
+      DATABASE_URL: postgres://dental:internal_pg_2024@postgres:5432/dental
+      MONGO_URL: mongodb://mongo:27017/dental
+      MONGO_DB: dental
       SMTP_EMAIL: ${SMTP_EMAIL}
       SMTP_PASSWORD: ${SMTP_PASSWORD}
-      TAILSCALE_AUTH_KEY: ${TAILSCALE_AUTH_KEY}
-      TAILSCALE_HOSTNAME: ${TAILSCALE_HOSTNAME:-smiledental-webhook}
-
-    volumes:
-      - webhook-urls:/shared
-      - tailscale-state:/var/lib/tailscale
-      - appointment-data:/app/data
-
-    ports:
-      - "3000:3000"
-
+      PORT: 3001
+    networks:
+      - dental-internal
     depends_on:
-      - app
-
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 20s
 
-  # ═══════════════════════════════════════════════════════════
-  #  WEB APP + EXPRESS SERVER  (frontend + SQLite DB)
-  #  ⚠️  INTERNAL ONLY — no internet access, DB is isolated
-  # ═══════════════════════════════════════════════════════════
+  # ─────────────────────────────────────────────────────────────
+  # Frontend App — Vite dev server
+  # ─────────────────────────────────────────────────────────────
   app:
     build: ./app
-    container_name: smiledental-app
+    container_name: dental-app
     restart: unless-stopped
-
-    networks:
-      - dental-internal      # INTERNAL ONLY — no internet, DB isolated
-
-    ports:
-      - "3001:3001"
-
-    volumes:
-      - app-data:/app/data   # persist SQLite
-
+    depends_on:
+      - browser
     environment:
-      PORT: 3001
-      VAPI_API_KEY: ${VAPI_API_KEY}
+      VITE_API_PROXY_TARGET: http://browser:3001
       VITE_VAPI_PUBLIC_KEY: ${VAPI_PUBLIC_KEY}
-      VITE_VAPI_ASSISTANT_ID: ${VAPI_ASSISTANT_ID:-450435e9-4562-4ddd-8429-54584d3285a7}
+      VITE_VAPI_ASSISTANT_ID: ${VAPI_ASSISTANT_ID}
+      VITE_CLINIC_NAME: ${CLINIC_NAME:-Dental Clinic}
+    ports:
+      - "5173:5173"
+    networks:
+      - dental-internal
 
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 15s
-
-# ── Named volumes ──
 volumes:
-  webhook-urls:
-  tailscale-state:
-  appointment-data:
-  app-data:
+  postgres-data:
+  mongo-data:
+  backend-data:
+  tsnet-state:

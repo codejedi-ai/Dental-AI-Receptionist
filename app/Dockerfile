@@ -1,4 +1,4 @@
-FROM node:20-slim AS builder
+FROM node:20-slim
 
 WORKDIR /app
 
@@ -6,22 +6,9 @@ COPY package*.json ./
 RUN npm install
 
 COPY . .
-RUN npm run build
-
-# ── Runtime ──
-FROM node:20-slim
-
-WORKDIR /app
-
-COPY package*.json ./
-RUN npm install --omit=dev
-
-COPY --from=builder /app/dist ./dist
-COPY --from=builder /app/server ./server
-COPY --from=builder /app/index.html ./
 
 RUN mkdir -p /app/data
 
-EXPOSE 3001
+EXPOSE 5173
 
-CMD ["node", "dist/server/index.js"]
+CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0", "--port", "5173"]

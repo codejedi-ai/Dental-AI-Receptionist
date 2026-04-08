@@ -1,6 +1,0 @@
-node_modules
-dist
-.env
-.assistant-id
-*.sh.bak
-shared/

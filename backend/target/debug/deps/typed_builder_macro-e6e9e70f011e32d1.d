@@ -1,0 +1,10 @@
+/root/Dental-AI-Reception/backend/target/debug/deps/typed_builder_macro-e6e9e70f011e32d1.d: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/builder_attr.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/field_info.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/mutator.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/struct_info.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/util.rs
+
+/root/Dental-AI-Reception/backend/target/debug/deps/libtyped_builder_macro-e6e9e70f011e32d1.so: /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/lib.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/builder_attr.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/field_info.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/mutator.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/struct_info.rs /root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/util.rs
+
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/lib.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/builder_attr.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/field_info.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/mutator.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/struct_info.rs:
+/root/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/typed-builder-macro-0.22.0/src/util.rs:
