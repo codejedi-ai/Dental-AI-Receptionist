@@ -1,0 +1,98 @@
+version: "3.9"
+
+# ── Private internal network (no internet access for DB) ──
+networks:
+  dental-internal:
+    driver: bridge
+    internal: true          # blocks all outbound internet traffic
+
+  # ── Public network for Tailscale container ──
+  dental-public:
+    driver: bridge
+
+services:
+  # ═══════════════════════════════════════════════════════════
+  #  VAPI WEBHOOK SERVER  (with Tailscale Funnel inside)
+  # ═══════════════════════════════════════════════════════════
+  vapi-webhook:
+    build: ./backend-vapi
+    container_name: smiledental-vapi
+    restart: unless-stopped
+
+    networks:
+      - dental-public        # needs internet for Tailscale + Vapi callbacks
+      - dental-internal      # talk to app/DB
+
+    # Tailscale needs these
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    devices:
+      - /dev/net/tun:/dev/net/tun
+
+    environment:
+      VAPI_API_KEY: ${VAPI_API_KEY}
+      VAPI_PUBLIC_KEY: ${VAPI_PUBLIC_KEY}
+      VAPI_ASSISTANT_ID: ${VAPI_ASSISTANT_ID:-450435e9-4562-4ddd-8429-54584d3285a7}
+      PORT: 3000
+      WEBHOOK_URL: ""               # set by entrypoint at runtime
+      SMTP_EMAIL: ${SMTP_EMAIL}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
+      TAILSCALE_AUTH_KEY: ${TAILSCALE_AUTH_KEY}
+      TAILSCALE_HOSTNAME: ${TAILSCALE_HOSTNAME:-smiledental-webhook}
+
+    volumes:
+      - webhook-urls:/shared
+      - tailscale-state:/var/lib/tailscale
+      - appointment-data:/app/data
+
+    ports:
+      - "3000:3000"
+
+    depends_on:
+      - app
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  # ═══════════════════════════════════════════════════════════
+  #  WEB APP + EXPRESS SERVER  (frontend + SQLite DB)
+  #  ⚠️  INTERNAL ONLY — no internet access, DB is isolated
+  # ═══════════════════════════════════════════════════════════
+  app:
+    build: ./app
+    container_name: smiledental-app
+    restart: unless-stopped
+
+    networks:
+      - dental-internal      # INTERNAL ONLY — no internet, DB isolated
+
+    ports:
+      - "3001:3001"
+
+    volumes:
+      - app-data:/app/data   # persist SQLite
+
+    environment:
+      PORT: 3001
+      VAPI_API_KEY: ${VAPI_API_KEY}
+      VITE_VAPI_PUBLIC_KEY: ${VAPI_PUBLIC_KEY}
+      VITE_VAPI_ASSISTANT_ID: ${VAPI_ASSISTANT_ID:-450435e9-4562-4ddd-8429-54584d3285a7}
+
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+# ── Named volumes ──
+volumes:
+  webhook-urls:
+  tailscale-state:
+  appointment-data:
+  app-data:
