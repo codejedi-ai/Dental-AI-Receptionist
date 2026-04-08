@@ -24,7 +24,7 @@
     "endCallMessage": "Thank you for calling Smile Dental Clinic! Your appointment is confirmed, and we look forward to seeing you. Have a wonderful day!",
     "transcriber": {
         "model": "nova-3",
-        "language": "en",
+        "language": "multi",
         "provider": "deepgram",
         "endpointing": 150
     },

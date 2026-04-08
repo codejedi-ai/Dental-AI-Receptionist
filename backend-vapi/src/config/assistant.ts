@@ -136,8 +136,8 @@ export const TOOL_DEFINITIONS = [
           dentist: {
             type: "string",
             description:
-              "Optional: specific dentist name (Dr. Chen, Dr. Park, Dr. Sharma)",
-            enum: ["Dr. Chen", "Dr. Park", "Dr. Sharma"],
+              "Optional: specific dentist name (Dr. Sarah Chen, Dr. Michael Park, Dr. Priya Sharma)",
+            enum: ["Dr. Sarah Chen", "Dr. Michael Park", "Dr. Priya Sharma"],
           },
           service: {
             type: "string",
@@ -192,7 +192,7 @@ export const TOOL_DEFINITIONS = [
           dentist: {
             type: "string",
             description: "Dentist name",
-            enum: ["Dr. Chen", "Dr. Park", "Dr. Sharma"],
+            enum: ["Dr. Sarah Chen", "Dr. Michael Park", "Dr. Priya Sharma"],
           },
           service: {
             type: "string",
@@ -235,6 +235,25 @@ export const TOOL_DEFINITIONS = [
   {
     type: "function" as const,
     function: {
+      name: "get_clinic_info",
+      description:
+        "Get information about the clinic such as hours, location, insurance accepted, emergency procedures, cancellation policy, new patient instructions, or payment options.",
+      parameters: {
+        type: "object",
+        properties: {
+          topic: {
+            type: "string",
+            description: "The topic of information needed (hours, location, insurance, emergency, cancellation, newpatient, payment)",
+            enum: ["hours", "location", "insurance", "emergency", "cancellation", "newpatient", "payment"],
+          },
+        },
+        required: ["topic"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
       name: "send_verification_link",
       description:
         "Send an email verification link to the patient's email address. Call this after spelling the email back to the patient and they confirm it's correct. The patient must click the link before you can book.",
@@ -265,6 +284,19 @@ export const TOOL_DEFINITIONS = [
           },
         },
         required: ["email"],
+      },
+    },
+  },
+  {
+    type: "function" as const,
+    function: {
+      name: "get_current_date",
+      description:
+        "Get the current date and time in the clinic's timezone (America/Toronto). Use this when the patient asks about dates, days of the week, or when you need to know what today's date is.",
+      parameters: {
+        type: "object",
+        properties: {},
+        required: [],
       },
     },
   },

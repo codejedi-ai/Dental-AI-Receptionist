@@ -17,7 +17,7 @@ function getAuthClient() {
 }
 
 const CALENDAR_ID = process.env.GOOGLE_CALENDAR_ID || "primary";
-const DENTISTS = ["Dr. Chen", "Dr. Park", "Dr. Sharma"];
+const DENTISTS = ["Dr. Sarah Chen", "Dr. Michael Park", "Dr. Priya Sharma"];
 
 // Clinic hours
 const SLOT_DURATION_MINS = 30;
