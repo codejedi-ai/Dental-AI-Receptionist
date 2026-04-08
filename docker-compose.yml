@@ -21,7 +21,7 @@ services:
       POSTGRES_PASSWORD: internal_pg_2024
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
     networks:
       - dental-internal
     healthcheck:
@@ -40,7 +40,7 @@ services:
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
-      - ./backend/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - ./backend/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro,z
     networks:
       - dental-internal
     healthcheck:

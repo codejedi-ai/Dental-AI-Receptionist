@@ -1,19 +1,18 @@
 # ─────────────────────────────────────────────────────────────
 # Stage 1 — Build Rust binary
 # ─────────────────────────────────────────────────────────────
-FROM rust:1.75-slim AS builder
+FROM rust:1-slim AS builder
 
 WORKDIR /build
 
-# Cache dependencies (rebuild only on Cargo.toml change)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    pkg-config libssl-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Build the real project sources (no dummy main cache trick)
 COPY Cargo.toml Cargo.lock* ./
 COPY .cargo ./.cargo
-RUN mkdir src && echo "fn main() {}" > src/main.rs
-RUN cargo build --release 2>/dev/null || true
-
-# Copy actual source and build
-COPY . .
-RUN rm -f src/main.rs
+COPY src ./src
 RUN cargo build --release
 
 # ─────────────────────────────────────────────────────────────
