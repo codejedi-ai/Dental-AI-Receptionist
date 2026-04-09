@@ -82,14 +82,25 @@ func (h *Handler) Tools(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
+
+	body, errRead := io.ReadAll(r.Body)
+	if errRead != nil {
+		log.Printf("⚠️  POST /api/tools read body: %v", errRead)
+		http.Error(w, "Bad request", http.StatusBadRequest)
+		return
+	}
+	logVapiToolsIngress(r, body, "incoming")
+
 	if !isAuthorizedToolRequest(r) {
+		if vapiToolsDebugEnabled() {
+			log.Printf("[vapi-tools-debug] rejected 401 — compare TOOL_API_KEY with Vapi tool server Bearer or ?token=")
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusUnauthorized)
 		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized tool request"})
 		return
 	}
 
-	body, _ := io.ReadAll(r.Body)
 	log.Printf("📨 POST /api/tools body: %.500s", string(body))
 
 	// Vapi sends type either at top level or inside "message"
@@ -169,7 +180,87 @@ type ToolResult struct {
 	Result     any    `json:"result"`
 }
 
+func vapiToolsDebugEnabled() bool {
+	v := strings.TrimSpace(strings.ToLower(os.Getenv("VAPI_TOOLS_DEBUG")))
+	return v == "1" || v == "true" || v == "yes"
+}
+
+func authHeaderDebugSummary(auth string) string {
+	auth = strings.TrimSpace(auth)
+	if auth == "" {
+		return "absent"
+	}
+	la := strings.ToLower(auth)
+	if strings.HasPrefix(la, "bearer ") {
+		tok := strings.TrimSpace(auth[7:])
+		if tok == "" {
+			return "Bearer (empty token)"
+		}
+		n := len(tok)
+		tail := tok
+		if n > 6 {
+			tail = tok[n-6:]
+		}
+		return fmt.Sprintf("Bearer redacted len=%d …%s", n, tail)
+	}
+	return fmt.Sprintf("non-Bearer len=%d", len(auth))
+}
+
+// logVapiToolsIngress logs URL, selected headers (Authorization redacted), and body when VAPI_TOOLS_DEBUG is set.
+func logVapiToolsIngress(r *http.Request, body []byte, phase string) {
+	if !vapiToolsDebugEnabled() {
+		return
+	}
+	scheme := "http"
+	if r.TLS != nil {
+		scheme = "https"
+	}
+	if xf := strings.TrimSpace(r.Header.Get("X-Forwarded-Proto")); xf != "" {
+		scheme = strings.ToLower(xf)
+	}
+	log.Printf("[vapi-tools-debug] phase=%s | %s %s://%s%s | RemoteAddr=%s",
+		phase, r.Method, scheme, r.Host, r.URL.RequestURI(), r.RemoteAddr)
+	log.Printf("[vapi-tools-debug]   UA=%q | Content-Type=%q | Content-Length=%q | Authorization: %s",
+		r.UserAgent(), r.Header.Get("Content-Type"), r.Header.Get("Content-Length"), authHeaderDebugSummary(r.Header.Get("Authorization")))
+	for _, k := range []string{"X-Forwarded-For", "X-Real-Ip", "Cf-Connecting-Ip", "X-Vapi-Signature"} {
+		if v := r.Header.Get(k); v != "" {
+			log.Printf("[vapi-tools-debug]   %s=%q", k, v)
+		}
+	}
+	if len(body) == 0 {
+		log.Printf("[vapi-tools-debug]   body: <empty>")
+		return
+	}
+	const maxBody = 16384
+	s := string(body)
+	if len(s) > maxBody {
+		log.Printf("[vapi-tools-debug]   body (%d bytes, showing first %d): %s … [truncated]",
+			len(body), maxBody, s[:maxBody])
+		return
+	}
+	log.Printf("[vapi-tools-debug]   body (%d bytes): %s", len(body), s)
+}
+
+func logVapiToolsResponse(payload any, elapsed time.Duration) {
+	if !vapiToolsDebugEnabled() {
+		return
+	}
+	b, err := json.Marshal(payload)
+	if err != nil {
+		log.Printf("[vapi-tools-debug] response marshal error after %s: %v", elapsed, err)
+		return
+	}
+	s := string(b)
+	const max = 8192
+	if len(s) > max {
+		log.Printf("[vapi-tools-debug] response after %s (%d bytes, truncated): %s …", elapsed, len(s), s[:max])
+		return
+	}
+	log.Printf("[vapi-tools-debug] response after %s: %s", elapsed, s)
+}
+
 func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
+	start := time.Now()
 	log.Printf("📨 Raw tool message: %s", string(msg))
 
 	// Vapi sends tool calls in multiple possible shapes.
@@ -192,8 +283,10 @@ func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
 
 	if err := json.Unmarshal(msg, &envelope); err != nil {
 		log.Printf("⚠️  JSON unmarshal error: %v", err)
+		payload := map[string]any{"results": []string{}}
+		logVapiToolsResponse(payload, time.Since(start))
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"results": []string{}})
+		json.NewEncoder(w).Encode(payload)
 		return
 	}
 
@@ -219,8 +312,10 @@ func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
 	}
 	if len(calls) == 0 {
 		log.Printf("⚠️  No tool calls found in payload")
+		payload := map[string]any{"results": []string{}}
+		logVapiToolsResponse(payload, time.Since(start))
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{"results": []string{}})
+		json.NewEncoder(w).Encode(payload)
 		return
 	}
 
@@ -290,8 +385,10 @@ func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
 		results = append(results, ToolResult{ToolCallID: call.CallID(), Result: result})
 	}
 
+	payload := map[string]interface{}{"results": results}
+	logVapiToolsResponse(payload, time.Since(start))
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{"results": results})
+	json.NewEncoder(w).Encode(payload)
 }
 
 func isAuthorizedToolRequest(r *http.Request) bool {
