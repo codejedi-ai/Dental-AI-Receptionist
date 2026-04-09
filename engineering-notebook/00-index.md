@@ -19,6 +19,10 @@
 | 10 | `10-testing-strategy.md` | Testing plan: unit, integration, end-to-end, manual test matrix |
 | 11 | `11-error-handling.md` | Error states, recovery, timeout handling, graceful degradation |
 | 12 | `12-future-roadmap.md` | LiveKit migration, push-to-talk, call history, multi-device |
+| 13 | `13-module-1-language-detection.md` | Module 1: Language detection, first response generation (zh/en) |
+| 14 | `14-module-2-intent-classification.md` | Module 2: Intent classification with confidence scoring |
+| 15 | `15-evaluation-technical-challenges.md` | Vapi Evaluation: 3 challenges, root-cause analysis, CLI deploy, analysis plan, test suites |
+| 16 | `16-module-3-appointment-booking.md` | Module 3: Appointment booking state machine and flow |
 
 ---
 

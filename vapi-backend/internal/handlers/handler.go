@@ -1,17 +1,23 @@
 package handlers
 
 import (
+	"crypto/subtle"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"os"
+	"strings"
 	"time"
 
 	"dental-ai-vapi/internal/db"
+	"dental-ai-vapi/internal/modules/appointmentbooking"
+	"dental-ai-vapi/internal/modules/intentclassifier"
+	"dental-ai-vapi/internal/modules/languagedetection"
 	"dental-ai-vapi/internal/tools"
-
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"dental-ai-vapi/internal/util"
 )
 
 type Handler struct {
@@ -62,104 +68,256 @@ h1{color:%s;margin-top:8px}p{color:#555;line-height:1.6}.icon{font-size:48px}</s
 }
 
 func (h *Handler) Tools(w http.ResponseWriter, r *http.Request) {
+	// GET allows quick reachability checks (browser / cellular) without a POST body.
+	if r.Method == http.MethodGet {
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"ok":      true,
+			"service": "dental-ai-vapi-tools",
+			"hint":    "Vapi sends POST with JSON body (type tool-calls); include Authorization: Bearer <TOOL_API_KEY>",
+		})
+		return
+	}
 	if r.Method != http.MethodPost {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-
-	var req struct {
-		Message json.RawMessage `json:"message"`
-	}
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+	if !isAuthorizedToolRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_ = json.NewEncoder(w).Encode(map[string]string{"error": "Unauthorized tool request"})
 		return
 	}
 
-	var msgType struct {
-		Type string `json:"type"`
-	}
-	json.Unmarshal(req.Message, &msgType)
+	body, _ := io.ReadAll(r.Body)
+	log.Printf("📨 POST /api/tools body: %.500s", string(body))
 
-	switch msgType.Type {
+	// Vapi sends type either at top level or inside "message"
+	var topLevel struct {
+		Type    string `json:"type"`
+		Message json.RawMessage `json:"message"`
+	}
+	json.Unmarshal(body, &topLevel)
+
+	msgType := topLevel.Type
+	var msgBody json.RawMessage
+
+	if msgType == "" && len(topLevel.Message) > 0 {
+		// Shape: { "message": { "type": "tool-calls", ... } }
+		var inner struct {
+			Type string `json:"type"`
+		}
+		json.Unmarshal(topLevel.Message, &inner)
+		msgType = inner.Type
+		msgBody = topLevel.Message
+	} else if msgType != "" {
+		// Shape: { "type": "tool-calls", "toolCalls": [...] } (top-level)
+		msgBody = body
+	}
+
+	switch msgType {
 	case "tool-calls":
-		h.handleToolCalls(w, req.Message)
+		h.handleToolCalls(w, msgBody)
 	case "status-update", "conversation-update", "end-of-call-report", "speech-update", "hang":
-		h.logStatusUpdate(req.Message)
+		h.logStatusUpdate(msgBody)
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{})
 	default:
+		log.Printf("⚠️  Unknown message type: %q (body: %.200s)", msgType, string(body))
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{})
 	}
 }
 
 type ToolCall struct {
-	ID       string `json:"id"`
-	Function struct {
+	ID              string          `json:"toolCallId"`    // variant 1
+	ID2             string          `json:"id"`            // variant 2: Vapi also sends just "id"
+	Name            string          `json:"name"`          // direct name field
+	Arguments       json.RawMessage `json:"arguments"`     // direct arguments
+	Function        struct {
 		Name      string          `json:"name"`
 		Arguments json.RawMessage `json:"arguments"`
 	} `json:"function"`
 }
 
+// CallID returns the tool call ID, trying both field variants.
+func (t *ToolCall) CallID() string {
+	if t.ID != "" {
+		return t.ID
+	}
+	return t.ID2
+}
+
+// Args returns the tool arguments, preferring top-level over nested.
+func (t *ToolCall) Args() json.RawMessage {
+	if len(t.Arguments) > 0 {
+		return t.Arguments
+	}
+	return t.Function.Arguments
+}
+
+// ToolName returns the tool name from top-level or nested function.
+func (t *ToolCall) ToolName() string {
+	if t.Name != "" {
+		return t.Name
+	}
+	return t.Function.Name
+}
+
 type ToolResult struct {
 	ToolCallID string `json:"toolCallId"`
-	Result     string `json:"result"`
+	Result     any    `json:"result"`
 }
 
 func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
-	var tc struct {
-		ToolCalls []ToolCall `json:"tool_calls"`
+	log.Printf("📨 Raw tool message: %s", string(msg))
+
+	// Vapi sends tool calls in multiple possible shapes.
+	// Try them all in order of likelihood based on live logs.
+	var envelope struct {
+		// Shape A: wrapped in message
+		Message *struct {
+			Type         string     `json:"type"`
+			ToolCalls    []ToolCall `json:"tool_calls"`
+			ToolCallsCC  []ToolCall `json:"toolCalls"`     // camelCase (live Vapi)
+			ToolCallList []ToolCall `json:"toolCallList"`  // alternative
+		} `json:"message"`
+
+		// Shape B: top-level (no message wrapper)
+		Type         string     `json:"type"`
+		ToolCalls    []ToolCall `json:"tool_calls"`
+		ToolCallsCC  []ToolCall `json:"toolCalls"`
+		ToolCallList []ToolCall `json:"toolCallList"`
 	}
-	if err := json.Unmarshal(msg, &tc); err != nil {
+
+	if err := json.Unmarshal(msg, &envelope); err != nil {
+		log.Printf("⚠️  JSON unmarshal error: %v", err)
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{"results": []string{}})
+		json.NewEncoder(w).Encode(map[string]any{"results": []string{}})
+		return
+	}
+
+	// Extract calls: check message-wrapped first, then top-level
+	var calls []ToolCall
+	if envelope.Message != nil {
+		calls = envelope.Message.ToolCalls
+		if len(calls) == 0 {
+			calls = envelope.Message.ToolCallsCC
+		}
+		if len(calls) == 0 {
+			calls = envelope.Message.ToolCallList
+		}
+	}
+	if len(calls) == 0 {
+		calls = envelope.ToolCalls
+	}
+	if len(calls) == 0 {
+		calls = envelope.ToolCallsCC
+	}
+	if len(calls) == 0 {
+		calls = envelope.ToolCallList
+	}
+	if len(calls) == 0 {
+		log.Printf("⚠️  No tool calls found in payload")
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]any{"results": []string{}})
 		return
 	}
 
 	ctx := context.Background()
-	results := make([]ToolResult, 0, len(tc.ToolCalls))
+	results := make([]ToolResult, 0, len(calls))
 
-	for _, call := range tc.ToolCalls {
-		log.Printf("🔧 Tool call: %s", call.Function.Name)
+	for _, call := range calls {
+		log.Printf("🔧 Tool call: name=%s, callId=%s", call.ToolName(), call.CallID())
 		var result string
 		var status string
 
-		switch call.Function.Name {
+		switch call.ToolName() {
 		case "check_availability":
-			result, status = tools.CheckAvailability(ctx, h.pg, call.Function.Arguments)
+			result, status = tools.CheckAvailability(ctx, h.pg, call.Args())
 		case "book_appointment":
-			result, status = tools.BookAppointment(ctx, h.pg, h.mongo, call.Function.Arguments)
+			result, status = tools.BookAppointment(ctx, h.pg, h.mongo, call.Args())
 		case "cancel_appointment":
-			result, status = tools.CancelAppointment(ctx, h.pg, h.mongo, call.Function.Arguments)
+			result, status = tools.CancelAppointment(ctx, h.pg, h.mongo, call.Args())
 		case "get_clinic_info":
-			result, status = tools.GetClinicInfo(ctx, h.mongo, call.Function.Arguments)
-		case "send_sms_code":
-			result, status = tools.SendSMSCode(call.Function.Arguments)
-		case "verify_sms_code":
-			result, status = tools.VerifySMSCode(call.Function.Arguments)
+			result, status = tools.GetClinicInfo(ctx, h.mongo, call.Args())
 		case "lookup_patient":
-			result, status = tools.LookupPatient(ctx, h.pg, call.Function.Arguments)
+			result, status = tools.LookupPatient(ctx, h.pg, call.Args())
 		case "send_booking_confirmation":
-			result, status = tools.SendBookingConfirmation(call.Function.Arguments)
+			result, status = tools.SendBookingConfirmation(call.Args())
 		case "get_dentists":
 			result, status = tools.GetDentists(ctx, h.pg)
 		case "get_current_date":
 			result, status = tools.GetCurrentDate()
+		case "validate_patient_info":
+			result, status = tools.ValidatePatientInfo(call.Args())
+		case "parse_date":
+			result, status = tools.ParseDate(ctx, call.Args())
+		case "get_next_available_dates":
+			result, status = tools.GetNextAvailableDates(ctx, h.pg, call.Args())
+		case "detect_language":
+			result, status = handleDetectLanguage(call.Args())
+		case "classify_intent":
+			result, status = handleClassifyIntent(call.Args())
+		case "get_booking_step":
+			result, status = handleGetBookingStep(call.Args())
+		case "fill_booking_fields":
+			result, status = handleFillBookingFields(call.Args())
+		case "is_booking_complete":
+			result, status = handleIsBookingComplete(call.Args())
+		case "get_confirm_message":
+			result, status = handleGetConfirmMessage(call.Args())
+		case "get_cancel_message":
+			result, status = handleGetCancelMessage(call.Args())
+		case "get_reschedule_message":
+			result, status = handleGetRescheduleMessage(call.Args())
+		case "get_emergency_message":
+			result, status = handleGetEmergencyMessage(call.Args())
+		case "transfer_to_chinese_agent":
+			result = "Transferring to Li, the Chinese-speaking agent."
+			status = "success"
+		case "transfer_to_english_agent":
+			result = "Transferring to Riley, the English-speaking agent."
+			status = "success"
 		default:
-			result = fmt.Sprintf("Unknown tool: %s", call.Function.Name)
+			result = fmt.Sprintf("Unknown tool: %s", call.ToolName())
 			status = "error"
 		}
 
-		// Audit log
-		var args primitive.M
-		json.Unmarshal(call.Function.Arguments, &args)
-		h.mongo.LogToolCall(ctx, call.Function.Name, args, result, status)
+		// Audit log → file (logs/tool_calls_YYYY-MM-DD.log)
+		util.LogToolCall(call.ToolName(), call.Args(), result, status)
 
-		results = append(results, ToolResult{ToolCallID: call.ID, Result: result})
+		results = append(results, ToolResult{ToolCallID: call.CallID(), Result: result})
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{"results": results})
+}
+
+func isAuthorizedToolRequest(r *http.Request) bool {
+	expected := strings.TrimSpace(os.Getenv("TOOL_API_KEY"))
+	if expected == "" {
+		// Also accept query-param token if set by Vapi (serverUrl?token=...)
+		queryToken := strings.TrimSpace(r.URL.Query().Get("token"))
+		if queryToken != "" {
+			return true
+		}
+		return true
+	}
+	// Prefer Authorization header
+	auth := strings.TrimSpace(r.Header.Get("Authorization"))
+	if strings.HasPrefix(strings.ToLower(auth), "bearer ") {
+		provided := strings.TrimSpace(auth[len("Bearer "):])
+		if provided != "" && subtle.ConstantTimeCompare([]byte(provided), []byte(expected)) == 1 {
+			return true
+		}
+	}
+	// Fall back to query param
+	queryToken := strings.TrimSpace(r.URL.Query().Get("token"))
+	if queryToken != "" && subtle.ConstantTimeCompare([]byte(queryToken), []byte(expected)) == 1 {
+		return true
+	}
+	return false
 }
 
 func (h *Handler) logStatusUpdate(msg json.RawMessage) {
@@ -215,4 +373,130 @@ func TimeString(t time.Time) string {
 		h = 12
 	}
 	return fmt.Sprintf("%d:%02d %s", h, m, period)
+}
+
+// ─── Module 1: Language Detection ───────────────────────────────
+
+func handleDetectLanguage(args json.RawMessage) (string, string) {
+	sentence := ParseArg(args, "sentence")
+	if sentence == "" {
+		return `{"error":"sentence is required"}`, "error"
+	}
+	result := languagedetection.Detect(sentence)
+	data, _ := json.Marshal(result)
+	return string(data), "success"
+}
+
+// ─── Module 2: Intent Classification ────────────────────────────
+
+func handleClassifyIntent(args json.RawMessage) (string, string) {
+	utterance := ParseArg(args, "utterance")
+	langCode := ParseArg(args, "lang_code")
+	if utterance == "" {
+		return `{"error":"utterance is required"}`, "error"
+	}
+	if langCode == "" {
+		langCode = "en"
+	}
+	result := intentclassifier.Classify(utterance, langCode)
+	data, _ := json.Marshal(result)
+	return string(data), "success"
+}
+
+// ─── Module 3: Appointment Booking ──────────────────────────────
+
+func handleGetBookingStep(args json.RawMessage) (string, string) {
+	var ctx appointmentbooking.BookingContext
+	if err := json.Unmarshal(args, &ctx); err != nil {
+		return `{"error":"invalid booking context"}`, "error"
+	}
+	langCode := ParseArg(args, "lang_code")
+	if langCode == "" {
+		langCode = "en"
+	}
+	step, msg := appointmentbooking.NextStep(ctx, langCode)
+	data, _ := json.Marshal(map[string]interface{}{
+		"step":    step,
+		"message": msg,
+	})
+	return string(data), "success"
+}
+
+func handleFillBookingFields(args json.RawMessage) (string, string) {
+	var ctx appointmentbooking.BookingContext
+	if err := json.Unmarshal(args, &ctx); err != nil {
+		return `{"error":"invalid booking context"}`, "error"
+	}
+	utterance := ParseArg(args, "utterance")
+	langCode := ParseArg(args, "lang_code")
+	if langCode == "" {
+		langCode = "en"
+	}
+	// Also try to extract email from the raw args if provided directly
+	if ctx.PatientEmail == "" {
+		ctx.PatientEmail = ParseArg(args, "patient_email")
+	}
+	updated := appointmentbooking.FillFields(ctx, utterance, langCode)
+	data, _ := json.Marshal(updated)
+	return string(data), "success"
+}
+
+func handleIsBookingComplete(args json.RawMessage) (string, string) {
+	var ctx appointmentbooking.BookingContext
+	if err := json.Unmarshal(args, &ctx); err != nil {
+		return `{"error":"invalid booking context"}`, "error"
+	}
+	complete := appointmentbooking.IsComplete(ctx)
+	missing := appointmentbooking.MissingFields(ctx)
+	data, _ := json.Marshal(map[string]interface{}{
+		"complete": complete,
+		"missing":  missing,
+	})
+	return string(data), "success"
+}
+
+func handleGetConfirmMessage(args json.RawMessage) (string, string) {
+	var ctx appointmentbooking.BookingContext
+	if err := json.Unmarshal(args, &ctx); err != nil {
+		return `{"error":"invalid booking context"}`, "error"
+	}
+	langCode := ParseArg(args, "lang_code")
+	if langCode == "" {
+		langCode = "en"
+	}
+	msg := appointmentbooking.ConfirmMessage(ctx, langCode)
+	data, _ := json.Marshal(map[string]string{"message": msg})
+	return string(data), "success"
+}
+
+func handleGetCancelMessage(args json.RawMessage) (string, string) {
+	confirmed := ParseArg(args, "confirmed") == "true"
+	langCode := ParseArg(args, "lang_code")
+	if langCode == "" {
+		langCode = "en"
+	}
+	result := appointmentbooking.CancelMessage(confirmed, langCode)
+	data, _ := json.Marshal(result)
+	return string(data), "success"
+}
+
+func handleGetRescheduleMessage(args json.RawMessage) (string, string) {
+	hasExisting := ParseArg(args, "has_existing") == "true"
+	langCode := ParseArg(args, "lang_code")
+	if langCode == "" {
+		langCode = "en"
+	}
+	msg := appointmentbooking.RescheduleMessage(hasExisting, langCode)
+	data, _ := json.Marshal(map[string]string{"message": msg})
+	return string(data), "success"
+}
+
+func handleGetEmergencyMessage(args json.RawMessage) (string, string) {
+	langCode := ParseArg(args, "lang_code")
+	if langCode == "" {
+		langCode = "en"
+	}
+	msg := appointmentbooking.EmergencyMessage(langCode)
+	data, _ := json.Marshal(map[string]string{"message": msg})
+	return string(data), "success"
 }

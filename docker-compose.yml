@@ -1,4 +1,6 @@
 version: "3.9"
+# Docker is only for these two database services. Nothing else is containerized.
+# Go backend: ./run-vapi-local.sh on the host (localhost:5432 / :27017 via published ports).
 
 networks:
   dental-internal:
@@ -8,9 +10,6 @@ networks:
         - subnet: 172.28.0.0/16
 
 services:
-  # ─────────────────────────────────────────────────────────────
-  # PostgreSQL — local relational DB (patients, appointments)
-  # ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
     container_name: dental-postgres
@@ -21,9 +20,11 @@ services:
       POSTGRES_PASSWORD: internal_pg_2024
     volumes:
       - postgres-data:/var/lib/postgresql/data
-      - ./backend/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro,z
     networks:
       - dental-internal
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U dental"]
       interval: 10s
@@ -31,18 +32,17 @@ services:
       retries: 5
       start_period: 10s
 
-  # ─────────────────────────────────────────────────────────────
-  # MongoDB — local document DB (verifications, settings, logs)
-  # ─────────────────────────────────────────────────────────────
   mongo:
     image: mongo:7
     container_name: dental-mongo
     restart: unless-stopped
     volumes:
       - mongo-data:/data/db
-      - ./backend/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro,z
+      - ./db/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro,z
     networks:
       - dental-internal
+    ports:
+      - "27017:27017"
     healthcheck:
       test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
       interval: 10s
@@ -50,93 +50,6 @@ services:
       retries: 5
       start_period: 10s
 
-  # ─────────────────────────────────────────────────────────────
-  # Go Vapi Backend — tsnet joins tailnet directly
-  # Vapi calls: https://dental-ai.<tailnet>.ts.net/api/tools
-  # ─────────────────────────────────────────────────────────────
-  vapi:
-    build: ./vapi-backend
-    container_name: dental-vapi
-    restart: unless-stopped
-    environment:
-      TAILSCALE_HOSTNAME: ${TAILSCALE_HOSTNAME:-dental-ai}
-      TAILSCALE_AUTH_KEY: ${TAILSCALE_AUTH_KEY}
-      DATABASE_URL: postgres://dental:internal_pg_2024@postgres:5432/dental
-      MONGO_URL: mongodb://mongo:27017/dental
-      MONGO_DB: dental
-      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
-      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
-      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID}
-      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
-    volumes:
-      - tsnet-state:/root/.config
-    cap_add:
-      - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
-    networks:
-      - dental-internal
-    depends_on:
-      postgres:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "pidof vapi-server >/dev/null || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 30s
-
-  # ─────────────────────────────────────────────────────────────
-  # Rust Browser Backend — frontend proxy, email sending
-  # ─────────────────────────────────────────────────────────────
-  browser:
-    build: ./backend
-    container_name: dental-browser
-    restart: unless-stopped
-    environment:
-      DATABASE_URL: postgres://dental:internal_pg_2024@postgres:5432/dental
-      MONGO_URL: mongodb://mongo:27017/dental
-      MONGO_DB: dental
-      SMTP_EMAIL: ${SMTP_EMAIL}
-      SMTP_PASSWORD: ${SMTP_PASSWORD}
-      PORT: 3001
-    networks:
-      - dental-internal
-    depends_on:
-      postgres:
-        condition: service_healthy
-      mongo:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:3001/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
-
-  # ─────────────────────────────────────────────────────────────
-  # Frontend App — Vite dev server
-  # ─────────────────────────────────────────────────────────────
-  app:
-    build: ./app
-    container_name: dental-app
-    restart: unless-stopped
-    depends_on:
-      - browser
-    environment:
-      VITE_API_PROXY_TARGET: http://browser:3001
-      VITE_VAPI_PUBLIC_KEY: ${VAPI_PUBLIC_KEY}
-      VITE_VAPI_ASSISTANT_ID: ${VAPI_ASSISTANT_ID}
-      VITE_CLINIC_NAME: ${CLINIC_NAME:-Dental Clinic}
-    ports:
-      - "5173:5173"
-    networks:
-      - dental-internal
-
 volumes:
   postgres-data:
   mongo-data:
-  backend-data:
-  tsnet-state:

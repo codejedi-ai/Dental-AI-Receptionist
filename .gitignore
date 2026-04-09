@@ -8,4 +8,8 @@ __pycache__/
 *.db
 *.sqlite
 .assistant-id
-backend/target/\nvapi-backend/vapi-server\napp/dist/\nbackend-node-old/dist/\nbackend-node-old/node_modules/\n
+vapi-backend/vapi-server
+app/dist/
+backend-node-old/dist/
+backend-node-old/node_modules/
+vapi-backend/logs/

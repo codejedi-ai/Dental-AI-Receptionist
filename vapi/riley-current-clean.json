@@ -1,0 +1,306 @@
+{
+  "transcriber": {
+    "model": "nova-3",
+    "language": "multi",
+    "endpointing": 250,
+    "provider": "deepgram"
+  },
+  "model": {
+    "messages": [
+      {
+        "content": "You are a dental receptionist named Riley at Smile Dental Clinic.\n\nRules:\n- English only\n- Short answers (1-2 sentences)\n- Friendly and professional\n\nPatient Identification (do this at the start of EVERY call):\n1. Ask for their phone number first\n2. Call lookup_patient with their phone number\n3. If returning patient: greet them by name and confirm their details on file\n4. If new patient: collect full first and last name, phone number, and home address\n\nCall flow:\n1. Greet caller\n2. Call get_current_date\n3. Identify patient via lookup_patient (phone number)\n4. Ask what they need (book, cancel, question)\n5. For booking:\n   - Ask preferred service, dentist, and date\n   - Call check_availability\n   - Confirm all details\n   - Call book_appointment (include address if collected)\n   - Call send_sms_code to send OTP to their phone\n   - Ask them to read back the code\n   - Call verify_sms_code\n   - Call send_booking_confirmation with all appointment details\n6. Thank them and say goodbye\n\nClinic Info:\n- Name: Smile Dental Clinic\n- Address: 123 Main Street, Newmarket, ON L3Y 4Z1\n- Phone: (905) 555-0123\n- Hours: Mon-Fri 8am-6pm, Sat 9am-2pm, Sun Closed\n- Services: Checkups, Cleanings, Whitening, Fillings, Crowns, Root Canals, Implants, Invisalign, Pediatric, Emergency",
+        "role": "system"
+      }
+    ],
+    "tools": [
+      {
+        "function": {
+          "name": "get_current_date",
+          "description": "Get today's date and time in Toronto.",
+          "parameters": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "lookup_patient",
+          "description": "Look up a patient by phone number. Call this at the start of every call to identify the caller.",
+          "parameters": {
+            "properties": {
+              "phone": {
+                "type": "string",
+                "description": "Patient phone in E.164 format e.g. +16471234567"
+              }
+            },
+            "required": [
+              "phone"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "get_dentists",
+          "description": "Get the list of available dentists.",
+          "parameters": {
+            "properties": {},
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "check_availability",
+          "description": "Check available slots for a date. Always call before offering times.",
+          "parameters": {
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "YYYY-MM-DD"
+              },
+              "dentist": {
+                "type": "string",
+                "description": "Dentist name (optional)"
+              }
+            },
+            "required": [
+              "date"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "book_appointment",
+          "description": "Book a confirmed appointment after patient confirms all details.",
+          "parameters": {
+            "properties": {
+              "address": {
+                "type": "string",
+                "description": "Patient home address"
+              },
+              "date": {
+                "type": "string",
+                "description": "YYYY-MM-DD"
+              },
+              "dentist": {
+                "type": "string"
+              },
+              "notes": {
+                "type": "string"
+              },
+              "patientEmail": {
+                "type": "string"
+              },
+              "patientName": {
+                "type": "string"
+              },
+              "patientPhone": {
+                "type": "string",
+                "description": "E.164 format"
+              },
+              "service": {
+                "type": "string"
+              },
+              "time": {
+                "type": "string",
+                "description": "HH:MM 24h"
+              }
+            },
+            "required": [
+              "patientName",
+              "patientPhone",
+              "date",
+              "time",
+              "dentist",
+              "service"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "cancel_appointment",
+          "description": "Cancel an appointment by patient name and date.",
+          "parameters": {
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "YYYY-MM-DD"
+              },
+              "patientName": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "patientName",
+              "date"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "get_clinic_info",
+          "description": "Get clinic info: hours, services, location, insurance, payment.",
+          "parameters": {
+            "properties": {
+              "topic": {
+                "type": "string"
+              }
+            },
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "send_sms_code",
+          "description": "Send a 6-digit SMS verification code to the patient's phone.",
+          "parameters": {
+            "properties": {
+              "phone": {
+                "type": "string",
+                "description": "E.164 format"
+              }
+            },
+            "required": [
+              "phone"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "verify_sms_code",
+          "description": "Verify the code the patient reads back. Must match to confirm booking.",
+          "parameters": {
+            "properties": {
+              "code": {
+                "type": "string",
+                "description": "6-digit code"
+              },
+              "phone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "phone",
+              "code"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      },
+      {
+        "function": {
+          "name": "send_booking_confirmation",
+          "description": "Send SMS confirmation after successful booking and verification.",
+          "parameters": {
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "YYYY-MM-DD"
+              },
+              "dentist": {
+                "type": "string"
+              },
+              "patientName": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string",
+                "description": "E.164 format"
+              },
+              "service": {
+                "type": "string"
+              },
+              "time": {
+                "type": "string",
+                "description": "HH:MM 24h"
+              }
+            },
+            "required": [
+              "phone",
+              "patientName",
+              "service",
+              "dentist",
+              "date",
+              "time"
+            ],
+            "type": "object"
+          }
+        },
+        "type": "function"
+      }
+    ],
+    "model": "gpt-4o",
+    "temperature": 0.5,
+    "provider": "openai"
+  },
+  "voice": {
+    "voiceId": "EXAVITQu4vr4xnSDxMaL",
+    "stability": 0.4,
+    "similarityBoost": 0.8,
+    "style": 0.6,
+    "speed": 0.9,
+    "model": "eleven_multilingual_v2",
+    "provider": "11labs"
+  },
+  "firstMessage": "Thank you for calling Smile Dental Clinic! This is Riley. How can I help you today?",
+  "clientMessages": [
+    "transcript",
+    "hang",
+    "function-call",
+    "speech-update",
+    "metadata",
+    "transfer-update",
+    "conversation-update"
+  ],
+  "serverMessages": [
+    "end-of-call-report",
+    "status-update",
+    "hang",
+    "function-call"
+  ],
+  "backgroundDenoisingEnabled": true,
+  "name": "Riley",
+  "voicemailMessage": "Hello, this is Riley from Smile Dental Clinic. We're calling about your appointment. Please call us back at (905) 555-0123 at your earliest convenience.",
+  "endCallMessage": "Thank you for calling Smile Dental Clinic! We look forward to seeing you. Have a great day!",
+  "endCallPhrases": [
+    "goodbye",
+    "bye",
+    "talk to you soon",
+    "thanks bye",
+    "that's all"
+  ],
+  "artifactPlan": {},
+  "startSpeakingPlan": {
+    "waitSeconds": 0.4,
+    "smartEndpointingEnabled": "livekit"
+  },
+  "server": {
+    "timeoutSeconds": 20,
+    "url": "https://dental-ai.taildd3965.ts.net/api/tools"
+  },
+  "id": "450435e9-4562-4ddd-8429-54584d3285a7",
+  "orgId": "6754620d-d688-4906-9d3a-ea69686b1b7d",
+  "createdAt": "2025-03-20T20:45:41Z",
+  "updatedAt": "2026-04-09T01:11:52Z"
+}

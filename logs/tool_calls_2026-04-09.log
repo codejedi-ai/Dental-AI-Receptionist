@@ -1,0 +1,14 @@
+{"timestamp":"2026-04-09T18:01:26-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:01:26-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:01:38-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:02:01-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:02:53-04:00","tool_name":"get_clinic_info","arguments":{"topic":"services"},"result":"Consultation (30-45 min), Cleaning (30-45 min), Filling (30-45 min), Bridge (60-90 min), Crown (60-90 min), Root Canal (60-90 min), Extraction (30-45 min), Whitening (60-90 min), Implant, Invisalign, Pediatric, Emergency.","status":"success"}
+{"timestamp":"2026-04-09T18:03:09-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:07:04-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:07:22-04:00","tool_name":"get_clinic_info","arguments":{"topic":"services"},"result":"Consultation (30-45 min), Cleaning (30-45 min), Filling (30-45 min), Bridge (60-90 min), Crown (60-90 min), Root Canal (60-90 min), Extraction (30-45 min), Whitening (60-90 min), Implant, Invisalign, Pediatric, Emergency.","status":"success"}
+{"timestamp":"2026-04-09T18:07:23-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:12:09-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:13:47-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:13:55-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:17:01-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}
+{"timestamp":"2026-04-09T18:17:28-04:00","tool_name":"get_dentists","arguments":{},"result":"Our dentists are: Dr. Michael Park, Dr. Priya Sharma, Dr. Sarah Chen.","status":"success"}

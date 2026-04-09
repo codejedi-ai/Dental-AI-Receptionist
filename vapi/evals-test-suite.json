@@ -1,0 +1,134 @@
+{
+  "tests": [
+    {
+      "name": "Booking Flow — English, Cleaning, Name+Phone Only",
+      "script": [
+        { "role": "user", "message": "Hi, I'd like to book a cleaning appointment for next Tuesday" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent responds in English, acknowledges booking request",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "I prefer Dr. Sarah Chen if possible" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent acknowledges dentist preference and checks availability for the date",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "10:00 AM works for me" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent asks for patient name",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "My name is John Smith" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent asks for cell phone number, does NOT ask for email, address, or DOB",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "416-555-0199" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent reads back all booking details and asks for explicit confirmation before booking",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "Yes, that's correct" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent confirms booking was made AND mentions SMS confirmation was sent",
+          "type": "llm_judge"
+        }}
+      ]
+    },
+    {
+      "name": "Booking Flow — Chinese, Crown, Name+Phone Only",
+      "script": [
+        { "role": "user", "message": "你好，我想预约做牙冠" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent responds in Chinese (zh)",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "我想要Park医生" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent acknowledges in Chinese and proceeds with booking flow",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "明天下午可以吗" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent checks availability and offers times in Chinese",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "我叫王小明" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent collects name and asks for phone number in Chinese",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "我的电话是14165550200" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent confirms booking details and mentions SMS in Chinese",
+          "type": "llm_judge"
+        }}
+      ]
+    },
+    {
+      "name": "No Mobile Phone — Email Fallback",
+      "script": [
+        { "role": "user", "message": "I need to book a consultation" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent proceeds with booking flow in English",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "Any dentist is fine, how about Thursday?" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent checks availability and offers slots",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "2 PM works" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent asks for name",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "Jane Doe" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent asks for cell phone number",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "I don't have a cell phone" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent asks for email address as fallback (not before checking for phone first)",
+          "type": "llm_judge"
+        }},
+        { "role": "user", "message": "jane@example.com" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent confirms booking and mentions email confirmation was sent",
+          "type": "llm_judge"
+        }}
+      ]
+    },
+    {
+      "name": "Service Recognition — Bridge",
+      "script": [
+        { "role": "user", "message": "I need to book a bridge appointment" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent recognizes 'bridge' as a valid service and proceeds with booking",
+          "type": "llm_judge"
+        }}
+      ]
+    },
+    {
+      "name": "Availability Check — Must Query Before Offering",
+      "script": [
+        { "role": "user", "message": "Can I book a filling for next Monday?" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent calls check_availability before offering any specific times. Agent does NOT invent availability.",
+          "type": "llm_judge"
+        }}
+      ]
+    },
+    {
+      "name": "Rejection — Should NOT Ask for Address",
+      "script": [
+        { "role": "user", "message": "I want to book a cleaning" },
+        { "role": "assistant", "eval": {
+          "criteria": "Agent proceeds through booking flow without ever asking for home address, DOB, or insurance card number",
+          "type": "llm_judge"
+        }}
+      ]
+    }
+  ]
+}

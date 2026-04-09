@@ -465,3 +465,4 @@ Track system usage and health metrics.
 ---
 
 *← Back to [Page 00 — Index](00-index.md)*
+*Next: [Page 13 — Module 1: Language Detection](13-module-1-language-detection.md)*

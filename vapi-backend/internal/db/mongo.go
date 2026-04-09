@@ -4,10 +4,10 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"strings"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
@@ -102,6 +102,7 @@ func (m *Mongo) GetClinicInfo(ctx context.Context, topic string) string {
 		return m.fallbackInfo(topic)
 	}
 
+	// Map user-facing topic names to MongoDB document fields
 	keyMap := map[string]string{
 		"hours":              "hours",
 		"location":           "address",
@@ -113,16 +114,25 @@ func (m *Mongo) GetClinicInfo(ctx context.Context, topic string) string {
 		"newpatient":         "newPatientInfo",
 		"newpatientinfo":     "newPatientInfo",
 		"payment":            "payment",
+		"services":           "services",
+		"service":            "services",
+		"dentists":           "dentists",
+		"dentist":            "dentists",
+		"general":            "name",
 	}
 
-	topicLower := ""
-	for _, r := range topic {
-		topicLower += string(r)
-	}
+	topicLower := strings.ToLower(strings.TrimSpace(topic))
 
+	// Exact match first
+	if field, ok := keyMap[topicLower]; ok {
+		if val, ok := doc[field].(string); ok && val != "" {
+			return val
+		}
+	}
+	// Prefix match (e.g., "cancellation policy" → "cancellation")
 	for k, v := range keyMap {
-		if topicLower == k || len(topicLower) >= 3 && len(k) >= 3 {
-			if val, ok := doc[v].(string); ok {
+		if strings.HasPrefix(topicLower, k) {
+			if val, ok := doc[v].(string); ok && val != "" {
 				return val
 			}
 		}
@@ -133,15 +143,24 @@ func (m *Mongo) GetClinicInfo(ctx context.Context, topic string) string {
 func (m *Mongo) fallbackInfo(topic string) string {
 	fallbacks := map[string]string{
 		"hours":        "Monday through Friday 8 AM to 6 PM, Saturday 9 AM to 2 PM. Closed on Sundays and statutory holidays.",
-		"location":     "Please check our website for the full address.",
+		"location":     "123 Main Street, Newmarket, ON L3Y 4Z1.",
+		"address":      "123 Main Street, Newmarket, ON L3Y 4Z1.",
 		"insurance":    "We accept most major dental insurance plans. Please bring your insurance card to your appointment.",
-		"emergency":    "For after-hours dental emergencies, please go to your nearest emergency department.",
+		"emergency":    "For after-hours dental emergencies, go to Southlake Regional Health Centre ER at 596 Davis Drive, Newmarket.",
 		"cancellation": "We ask for at least 24 hours notice for cancellations.",
-		"newpatient":   "New patients are always welcome! Please arrive 15 minutes early to complete paperwork.",
+		"newpatient":   "New patients are welcome! Arrive 15 minutes early for your first visit.",
 		"payment":      "We accept cash, debit, Visa, Mastercard, and e-transfer.",
+		"services":     "Consultation, Cleaning, Filling, Bridge, Crown, Root Canal, Extraction, Whitening, Implant, Invisalign, Pediatric, Emergency.",
+		"dentists":     "Dr. Sarah Chen, Dr. Michael Park, Dr. Priya Sharma.",
 	}
+	topicLower := strings.ToLower(strings.TrimSpace(topic))
+	// Exact match first
+	if val, ok := fallbacks[topicLower]; ok {
+		return val
+	}
+	// Prefix match
 	for k, v := range fallbacks {
-		if len(topic) >= 3 && len(k) >= 3 {
+		if strings.HasPrefix(topicLower, k) {
 			return v
 		}
 	}
@@ -161,15 +180,5 @@ func (m *Mongo) LogCall(ctx context.Context, phone *string, durationSecs *int64,
 	return err
 }
 
-// ─── Tool Call Audit ──────────────────────────────────────────
-
-func (m *Mongo) LogToolCall(ctx context.Context, toolName string, args primitive.M, result, status string) error {
-	_, err := m.db.Collection("tool_calls").InsertOne(ctx, bson.M{
-		"toolName":  toolName,
-		"arguments": args,
-		"result":    result,
-		"status":    status,
-		"timestamp": time.Now(),
-	})
-	return err
-}
+// ─── Tool Call Audit (file-based, see internal/util/toollogger.go) ───
+// Tool calls are now logged to logs/tool_calls_YYYY-MM-DD.log via util.LogToolCall()

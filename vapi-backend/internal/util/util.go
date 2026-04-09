@@ -25,6 +25,19 @@ func ParseArg(args json.RawMessage, key string) string {
 	if v, ok := m[key].(string); ok {
 		return v
 	}
+	// Also try snake_case <-> camelCase conversion
+	altKey := camelToSnake(key)
+	if altKey != key {
+		if v, ok := m[altKey].(string); ok {
+			return v
+		}
+	}
+	altKey2 := snakeToCamel(key)
+	if altKey2 != key {
+		if v, ok := m[altKey2].(string); ok {
+			return v
+		}
+	}
 	return ""
 }
 
@@ -33,7 +46,59 @@ func ParseArgOpt(args json.RawMessage, key string) *string {
 	if v, ok := m[key].(string); ok && v != "" {
 		return &v
 	}
+	// Also try snake_case <-> camelCase conversion
+	altKey := camelToSnake(key)
+	if altKey != key {
+		if v, ok := m[altKey].(string); ok && v != "" {
+			return &v
+		}
+	}
+	altKey2 := snakeToCamel(key)
+	if altKey2 != key {
+		if v, ok := m[altKey2].(string); ok && v != "" {
+			return &v
+		}
+	}
 	return nil
+}
+
+// camelToSnake converts camelCase to snake_case.
+func camelToSnake(s string) string {
+	var result []byte
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c >= 'A' && c <= 'Z' {
+			if i > 0 {
+				result = append(result, '_')
+			}
+			result = append(result, c+'a'-'A')
+		} else {
+			result = append(result, c)
+		}
+	}
+	return string(result)
+}
+
+// snakeToCamel converts snake_case to camelCase.
+func snakeToCamel(s string) string {
+	var result []byte
+	upperNext := false
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		if c == '_' {
+			upperNext = true
+		} else if upperNext {
+			if c >= 'a' && c <= 'z' {
+				result = append(result, c-'a'+'A')
+			} else {
+				result = append(result, c)
+			}
+			upperNext = false
+		} else {
+			result = append(result, c)
+		}
+	}
+	return string(result)
 }
 
 func TimeString(t time.Time) string {
