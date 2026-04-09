@@ -52,12 +52,33 @@ func (p *Postgres) GetAllDentists(ctx context.Context) ([]string, error) {
 	return names, nil
 }
 
-func (p *Postgres) FindOrCreatePatient(ctx context.Context, name, phone string, email *string) (int32, error) {
+type Patient struct {
+	ID          int32
+	UUID        string
+	Name        string
+	Phone       string
+	Email       *string
+	Address     *string
+	DateOfBirth *string
+}
+
+func (p *Postgres) GetPatientByPhone(ctx context.Context, phone string) (*Patient, error) {
+	pt := &Patient{}
+	err := p.pool.QueryRow(ctx,
+		"SELECT id, uuid::text, name, phone, email, address, date_of_birth::text FROM patients WHERE phone = $1", phone).
+		Scan(&pt.ID, &pt.UUID, &pt.Name, &pt.Phone, &pt.Email, &pt.Address, &pt.DateOfBirth)
+	if err != nil {
+		return nil, err
+	}
+	return pt, nil
+}
+
+func (p *Postgres) FindOrCreatePatient(ctx context.Context, name, phone string, email, address *string) (int32, error) {
 	var id int32
 	err := p.pool.QueryRow(ctx,
-		`INSERT INTO patients (name, phone, email) VALUES ($1, $2, $3)
-		 ON CONFLICT (phone) DO UPDATE SET name = $1, email = $3
-		 RETURNING id`, name, phone, email).Scan(&id)
+		`INSERT INTO patients (name, phone, email, address) VALUES ($1, $2, $3, $4)
+		 ON CONFLICT (phone) DO UPDATE SET name = $1, email = $3, address = COALESCE($4, patients.address)
+		 RETURNING id`, name, phone, email, address).Scan(&id)
 	return id, err
 }
 

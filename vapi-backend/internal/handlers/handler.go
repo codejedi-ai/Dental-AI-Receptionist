@@ -133,10 +133,14 @@ func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
 			result, status = tools.CancelAppointment(ctx, h.pg, h.mongo, call.Function.Arguments)
 		case "get_clinic_info":
 			result, status = tools.GetClinicInfo(ctx, h.mongo, call.Function.Arguments)
-		case "send_verification_link":
-			result, status = tools.SendVerificationLink(ctx, h.mongo, call.Function.Arguments, h.webhookURL)
-		case "check_verification_status":
-			result, status = tools.CheckVerificationStatus(ctx, h.mongo, call.Function.Arguments)
+		case "send_sms_code":
+			result, status = tools.SendSMSCode(call.Function.Arguments)
+		case "verify_sms_code":
+			result, status = tools.VerifySMSCode(call.Function.Arguments)
+		case "lookup_patient":
+			result, status = tools.LookupPatient(ctx, h.pg, call.Function.Arguments)
+		case "send_booking_confirmation":
+			result, status = tools.SendBookingConfirmation(call.Function.Arguments)
 		case "get_dentists":
 			result, status = tools.GetDentists(ctx, h.pg)
 		case "get_current_date":

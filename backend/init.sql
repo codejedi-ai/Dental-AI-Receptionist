@@ -5,12 +5,15 @@
 
 -- Patients table
 CREATE TABLE IF NOT EXISTS patients (
-    id          SERIAL PRIMARY KEY,
-    name        VARCHAR(255) NOT NULL,
-    phone       VARCHAR(50) NOT NULL,
-    email       VARCHAR(255),
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+    id            SERIAL PRIMARY KEY,
+    uuid          UUID NOT NULL DEFAULT gen_random_uuid(),
+    name          VARCHAR(255) NOT NULL,
+    phone         VARCHAR(50) NOT NULL,
+    email         VARCHAR(255),
+    address       TEXT,
+    date_of_birth DATE,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_phone ON patients(phone);

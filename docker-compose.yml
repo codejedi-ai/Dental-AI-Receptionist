@@ -64,6 +64,10 @@ services:
       DATABASE_URL: postgres://dental:internal_pg_2024@postgres:5432/dental
       MONGO_URL: mongodb://mongo:27017/dental
       MONGO_DB: dental
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN}
+      TWILIO_VERIFY_SERVICE_SID: ${TWILIO_VERIFY_SERVICE_SID}
+      TWILIO_PHONE_NUMBER: ${TWILIO_PHONE_NUMBER}
     volumes:
       - tsnet-state:/root/.config
     cap_add:
