@@ -90,6 +90,10 @@ func (p *Postgres) GetBookedSlots(ctx context.Context, date string, dentistID *i
 		if err := rows.Scan(&s.DentistID, &s.Time); err != nil {
 			return nil, err
 		}
+		// Normalize HH:MM:SS → HH:MM to match slot format
+		if len(s.Time) > 5 {
+			s.Time = s.Time[:5]
+		}
 		slots = append(slots, s)
 	}
 	return slots, nil

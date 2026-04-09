@@ -44,26 +44,11 @@ func main() {
 	}
 	defer srv.Close()
 
-	// Wait until Tailscale is connected
 	_, err = srv.Up(ctx)
 	if err != nil {
 		log.Fatalf("Tailscale connect: %v", err)
 	}
 
-	// Get the HTTPS listener with Tailscale's automatic TLS
-	ln, err := srv.ListenTLS("tcp", ":443")
-	if err != nil {
-		// Fallback: plain TCP on port 3000 if TLS fails
-		log.Printf("TLS listen failed (%v), falling back to HTTP on :3000", err)
-		plainLn, err2 := srv.Listen("tcp", ":3000")
-		if err2 != nil {
-			log.Fatalf("Tailscale listen: %v", err2)
-		}
-		serveHTTP(plainLn, pg, mongo, "http://"+tailnetName+":3000")
-		return
-	}
-
-	// Get hostname for webhook URL
 	lc, err := srv.LocalClient()
 	if err != nil {
 		log.Fatalf("LocalClient: %v", err)
@@ -72,10 +57,21 @@ func main() {
 	if err != nil {
 		log.Fatalf("Tailscale status: %v", err)
 	}
-	self := status.Self
 	webhookURL := "https://" + tailnetName + ".ts.net"
-	if self.DNSName != "" {
-		webhookURL = "https://" + self.DNSName[:len(self.DNSName)-1] // strip trailing dot
+	if status.Self.DNSName != "" {
+		webhookURL = "https://" + status.Self.DNSName[:len(status.Self.DNSName)-1]
+	}
+
+	// Try Funnel first (public internet), fall back to tailnet TLS
+	ln, err := srv.ListenFunnel("tcp", ":443")
+	if err != nil {
+		log.Printf("⚠️  Funnel unavailable (%v) — serving on tailnet TLS only", err)
+		ln, err = srv.ListenTLS("tcp", ":443")
+		if err != nil {
+			log.Fatalf("ListenTLS: %v", err)
+		}
+	} else {
+		log.Println("🌐 Tailscale Funnel active — publicly reachable")
 	}
 
 	serveHTTP(ln, pg, mongo, webhookURL)
@@ -83,7 +79,7 @@ func main() {
 
 func serveHTTP(ln net.Listener, pg *db.Postgres, mongo *db.Mongo, webhookURL string) {
 	log.Printf("🦷 Vapi backend listening on %s", ln.Addr())
-	log.Printf("   Tailscale webhook: %s/api/tools", webhookURL)
+	log.Printf("   Webhook URL: %s/api/tools", webhookURL)
 
 	h := handlers.New(pg, mongo, webhookURL)
 

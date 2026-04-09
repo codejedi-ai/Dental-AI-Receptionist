@@ -137,6 +137,8 @@ func (h *Handler) handleToolCalls(w http.ResponseWriter, msg json.RawMessage) {
 			result, status = tools.SendVerificationLink(ctx, h.mongo, call.Function.Arguments, h.webhookURL)
 		case "check_verification_status":
 			result, status = tools.CheckVerificationStatus(ctx, h.mongo, call.Function.Arguments)
+		case "get_dentists":
+			result, status = tools.GetDentists(ctx, h.pg)
 		case "get_current_date":
 			result, status = tools.GetCurrentDate()
 		default:

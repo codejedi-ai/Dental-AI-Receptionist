@@ -13,7 +13,7 @@ CREATE TABLE IF NOT EXISTS patients (
     updated_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
-CREATE INDEX IF NOT EXISTS idx_patients_phone ON patients(phone);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_patients_phone ON patients(phone);
 CREATE INDEX IF NOT EXISTS idx_patients_email ON patients(email);
 
 -- Dentists table

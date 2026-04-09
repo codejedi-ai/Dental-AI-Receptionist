@@ -1,0 +1,168 @@
+{
+  "serverUrl": "https://dental-ai.taildd3965.ts.net/api/tools",
+  "model": {
+    "provider": "openai",
+    "model": "gpt-4o",
+    "temperature": 0.5,
+    "messages": [
+      {
+        "role": "system",
+        "content": "You are a bilingual dental receptionist (English and Chinese).\n\nYour job:\n- Answer phone calls\n- Help patients book appointments\n- Ask for name and phone number\n\nRules:\n- If the caller speaks Chinese, reply in Chinese\n- If the caller speaks English, reply in English\n- Keep answers short (1-2 sentences)\n- Be friendly and natural\n\nClinic Info:\n- Name: Smile Dental Clinic\n- Address: 123 Main Street, Newmarket, ON L3Y 4Z1\n- Phone: (905) 555-0123\n- Hours: Mon–Fri 8am–6pm, Sat 9am–2pm, Sun Closed\n- Dentists: Dr. Sarah Chen, Dr. Michael Park, Dr. Priya Sharma\n- Services: Checkups, Cleanings, Whitening, Fillings, Crowns, Root Canals, Implants, Invisalign, Pediatric, Emergency\n\nCall flow:\n1. Greet the caller\n2. Ask what they need (book, reschedule, cancel, question)\n3. For booking: ask service, dentist preference, name, phone number, preferred date\n4. Use check_availability to find open slots\n5. Confirm all details with the patient\n6. Use book_appointment to create the booking\n7. If they provide an email, use send_verification_link then check_verification_status before finalizing\n8. Thank them and say goodbye"
+      }
+    ],
+    "tools": [
+      {
+        "type": "function",
+        "function": {
+          "name": "get_current_date",
+          "description": "Get today's date and current time in Toronto. Always call this at the start of the conversation so you know what date it is.",
+          "parameters": {
+            "type": "object",
+            "properties": {},
+            "required": []
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "check_availability",
+          "description": "Check available appointment slots for a specific date and optionally a specific dentist. Always call this before offering times to a patient.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "date": {
+                "type": "string",
+                "description": "Date to check in YYYY-MM-DD format"
+              },
+              "dentist": {
+                "type": "string",
+                "description": "Dentist name. If not specified, checks all dentists.",
+                "enum": ["Dr. Sarah Chen", "Dr. Michael Park", "Dr. Priya Sharma"]
+              }
+            },
+            "required": ["date"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "book_appointment",
+          "description": "Book a confirmed appointment. Only call this after the patient has confirmed all details.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "patientName": {
+                "type": "string",
+                "description": "Patient's full name"
+              },
+              "patientPhone": {
+                "type": "string",
+                "description": "Patient's phone number"
+              },
+              "patientEmail": {
+                "type": "string",
+                "description": "Patient's email address (optional)"
+              },
+              "date": {
+                "type": "string",
+                "description": "Appointment date in YYYY-MM-DD format"
+              },
+              "time": {
+                "type": "string",
+                "description": "Appointment time in HH:MM format (24h), e.g. 09:00"
+              },
+              "dentist": {
+                "type": "string",
+                "description": "Dentist name",
+                "enum": ["Dr. Sarah Chen", "Dr. Michael Park", "Dr. Priya Sharma"]
+              },
+              "service": {
+                "type": "string",
+                "description": "Type of dental service"
+              },
+              "notes": {
+                "type": "string",
+                "description": "Any special notes or concerns"
+              }
+            },
+            "required": ["patientName", "patientPhone", "date", "time", "dentist", "service"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "cancel_appointment",
+          "description": "Cancel an existing appointment by patient name and date.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "patientName": {
+                "type": "string",
+                "description": "Patient's full name"
+              },
+              "date": {
+                "type": "string",
+                "description": "Date of appointment to cancel in YYYY-MM-DD format"
+              }
+            },
+            "required": ["patientName", "date"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "get_clinic_info",
+          "description": "Get clinic information such as hours, services, location, or dentist details.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "topic": {
+                "type": "string",
+                "description": "Topic to look up: hours, services, location, dentists, insurance, or general"
+              }
+            },
+            "required": []
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "send_verification_link",
+          "description": "Send an email verification link to the patient. Use this when the patient provides an email address.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "description": "Patient's email address"
+              }
+            },
+            "required": ["email"]
+          }
+        }
+      },
+      {
+        "type": "function",
+        "function": {
+          "name": "check_verification_status",
+          "description": "Check if the patient has clicked their email verification link. Poll this after sending a verification link.",
+          "parameters": {
+            "type": "object",
+            "properties": {
+              "email": {
+                "type": "string",
+                "description": "Patient's email address"
+              }
+            },
+            "required": ["email"]
+          }
+        }
+      }
+    ]
+  }
+}

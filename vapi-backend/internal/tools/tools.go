@@ -6,12 +6,11 @@ import (
 	"fmt"
 	"log"
 	"time"
+	_ "time/tzdata" // embed timezone DB so Alpine containers can load locations
 
 	"dental-ai-vapi/internal/db"
 	"dental-ai-vapi/internal/util"
 )
-
-var dentists = []string{"Dr. Sarah Chen", "Dr. Michael Park", "Dr. Priya Sharma"}
 
 var weekdaySlots = []string{"08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "12:30", "13:00", "13:30", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30", "17:00", "17:30"}
 var saturdaySlots = []string{"09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:30", "13:00", "13:30"}
@@ -40,7 +39,14 @@ func CheckAvailability(ctx context.Context, pg *db.Postgres, args json.RawMessag
 		slots = saturdaySlots
 	}
 
-	dentistList := dentists
+	// Load dentists from DB so the list stays in sync with the database
+	allDentists, err := pg.GetAllDentists(ctx)
+	if err != nil || len(allDentists) == 0 {
+		log.Printf("GetAllDentists error: %v", err)
+		return "Sorry, I'm having trouble accessing the dentist list right now. Please try again.", "error"
+	}
+
+	dentistList := allDentists
 	if dentist != "" {
 		dentistList = []string{dentist}
 	}
@@ -216,6 +222,14 @@ func CheckVerificationStatus(ctx context.Context, mongo *db.Mongo, args json.Raw
 	default:
 		return "The verification link has expired. Please send a new one using the send_verification_link tool.", "error"
 	}
+}
+
+func GetDentists(ctx context.Context, pg *db.Postgres) (string, string) {
+	names, err := pg.GetAllDentists(ctx)
+	if err != nil || len(names) == 0 {
+		return "I'm having trouble retrieving the dentist list right now.", "error"
+	}
+	return fmt.Sprintf("Our dentists are: %s.", util.JoinStr(names, ", ")), "success"
 }
 
 func GetCurrentDate() (string, string) {
