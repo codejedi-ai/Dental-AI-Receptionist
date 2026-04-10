@@ -27,6 +27,11 @@ func (p *Postgres) Close() {
 	p.pool.Close()
 }
 
+// Pool returns the underlying pgxpool.Pool for direct access
+func (p *Postgres) Pool() *pgxpool.Pool {
+	return p.pool
+}
+
 func (p *Postgres) GetDentistID(ctx context.Context, name string) (int32, error) {
 	var id int32
 	err := p.pool.QueryRow(ctx,

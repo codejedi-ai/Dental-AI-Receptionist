@@ -30,7 +30,7 @@ func LoadEnvConfig() Config {
 		},
 		Database: struct{ PostgresURL, MongoURL string }{
 			PostgresURL: getEnv("DATABASE_URL", "postgresql://dental:internal_pg_2024@127.0.0.1:5432/dental"),
-			MongoURL:    getEnv("MONGO_URL", "mongodb://dental:internal_mongo_2024@127.0.0.1:27017/dental?authSource=dental"),
+			MongoURL:    getEnv("MONGO_URL", "mongodb://127.0.0.1:27017/dental"),
 		},
 		Vapi: struct{ APIKey, PublicKey string }{
 			APIKey:    getEnv("VAPI_API_KEY", ""),
