@@ -8,6 +8,7 @@ const TOOL_FIRST_MARKER = "=== TOOL-FIRST POLICY (AUTO-GENERATED) ===";
 const TOOL_FIRST_POLICY = [
   TOOL_FIRST_MARKER,
   "Every dental_action is an action the AI can do with the tool.",
+  "When the user gives a date in any form, convert it with parse_date before calling scheduling tools.",
   "You MUST call dispatch_dental_action before any final answer for clinic data.",
   "If a request needs clinic facts, dentist list, date parsing, availability, booking, cancellation, or confirmation, call the tool first.",
   "For operations with no parameters, send payload: {} explicitly.",

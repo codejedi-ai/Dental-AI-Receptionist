@@ -227,7 +227,7 @@ For general questions:
 
 - Always call `check_availability` before presenting specific booking times.
 - Do not call `book_appointment` until required booking fields are collected.
-- Validate/normalize dates to `YYYY-MM-DD` before booking/cancel calls.
+- Never ask the patient to convert the date to `YYYY-MM-DD`; use `parse_date` on the date the patient said, then pass the normalized result to scheduling tools.
 - If a tool returns an error/result asking for missing fields, ask the user only for those missing fields and retry.
 
 ## 6) Legacy Direct Handler Form (Internal)
