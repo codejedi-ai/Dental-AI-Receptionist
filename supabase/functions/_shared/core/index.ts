@@ -1,15 +1,15 @@
 import { SupabaseTool } from "./SupabaseTool.ts";
 import { Tool } from "./ToolDefinition.ts";
-import { book_appointment } from "./toolfunctions/book_appointment.ts";
-import { cancel_appointment } from "./toolfunctions/cancel_appointment.ts";
-import { check_availability } from "./toolfunctions/check_availability.ts";
-import { get_clinic_info } from "./toolfunctions/get_clinic_info.ts";
-import { get_current_date } from "./toolfunctions/get_current_date.ts";
-import { get_dentists } from "./toolfunctions/get_dentists.ts";
-import { get_next_available_dates } from "./toolfunctions/get_next_available_dates.ts";
-import { health_check } from "./toolfunctions/health_check.ts";
-import { parse_date } from "./toolfunctions/parse_date.ts";
-import { send_booking_confirmation } from "./toolfunctions/send_booking_confirmation.ts";
+import { book_appointment } from "./dental_action/book_appointment.ts";
+import { cancel_appointment } from "./dental_action/cancel_appointment.ts";
+import { check_availability } from "./dental_action/check_availability.ts";
+import { get_clinic_info } from "./dental_action/get_clinic_info.ts";
+import { get_current_date } from "./dental_action/get_current_date.ts";
+import { get_dentists } from "./dental_action/get_dentists.ts";
+import { get_next_available_dates } from "./dental_action/get_next_available_dates.ts";
+import { health_check } from "./dental_action/health_check.ts";
+import { parse_date } from "./dental_action/parse_date.ts";
+import { send_booking_confirmation } from "./dental_action/send_booking_confirmation.ts";
 
 const allTools: Tool[] = [
   health_check,
