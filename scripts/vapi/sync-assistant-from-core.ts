@@ -7,7 +7,8 @@ const END_MARKER = "=== END TOOL HANDBOOK ===";
 const TOOL_FIRST_MARKER = "=== TOOL-FIRST POLICY (AUTO-GENERATED) ===";
 const TOOL_FIRST_POLICY = [
   TOOL_FIRST_MARKER,
-  "You MUST call dispatch_dental_action before any final answer for backend/clinic data.",
+  "Every dental_action is an action the AI can do with the tool.",
+  "You MUST call dispatch_dental_action before any final answer for clinic data.",
   "If a request needs clinic facts, dentist list, date parsing, availability, booking, cancellation, or confirmation, call the tool first.",
   "For operations with no parameters, send payload: {} explicitly.",
   "Do NOT invent clinic data or scheduling data from memory.",

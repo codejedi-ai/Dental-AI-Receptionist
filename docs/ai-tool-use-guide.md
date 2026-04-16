@@ -1,6 +1,8 @@
 # AI Tool Use Guide (Dental Reception)
 
-This guide explains exactly how the AI should call each backend function.
+This guide explains exactly how the AI should call each dental_action.
+
+In this repo, each dental_action is one of the actions the AI can do with the tool, and the single tool the AI calls is dispatch_dental_action.
 
 ## 1) Primary Call Pattern (Router Tool)
 
@@ -26,7 +28,7 @@ Notes:
 
 ## 2) Supported Operations
 
-The router supports:
+The router supports these dental_action operations:
 
 - `health_check`
 - `get_current_date`
