@@ -1,105 +1,63 @@
-# AI Reception (Vapi + Go)
+# AI Reception (Vapi + Supabase Serverless)
 
-Everything runs **on your computer**: databases in Docker, **Go API only on localhost**. Your **tailnet / Tailscale Funnel** does not run the app — it only **publishes** `127.0.0.1` to the internet so **Vapi’s cloud** can `POST` tool webhooks to you.
+This project now runs with a serverless runtime for tool/webhook handling via Supabase Edge Functions.
 
-## Layout
+## Runtime Architecture
 
-```
-├── db/                 # PostgreSQL + MongoDB init scripts
-├── vapi/               # Assistant JSON, deploy-vapi.sh, sync-tool-auth.sh
-├── vapi-backend/       # Go — /api/tools (local HTTP only)
-└── engineering-notebook/
-```
+- Supabase Edge Function: `supabase/functions/webhook`
+- Vapi tool server URL: `https://<your-host>/functions/v1/webhook`
+- PostgreSQL data store: `appointments`, `patients`, `dentists`
 
-## End-to-end: local Go → Funnel → Vapi CLI
+There is no Go runtime required for the webhook/tool execution path.
 
-Do this **on the same machine** that runs Go (a node in your tailnet with Funnel allowed in admin policy).
+## Quick Start
 
-### 1) Databases (Docker — only these use containers)
+1. Start local services:
 
 ```bash
-docker compose up -d postgres mongo
-# Optional: ./launch-vapi.sh   # DBs + Excel seed via local Python
+supabase start
 ```
 
-### 2) Go backend (always local)
+2. Run local webhook function:
 
 ```bash
-./run-vapi-local.sh
+./scripts/run-vapi-local.sh
 ```
 
-Listens on **`127.0.0.1:8080`** by default (not reachable from other PCs without a tunnel).
-
-### 3) Expose localhost to the internet with Tailscale Funnel
-
-```bash
-./tailscale-expose-vapi.sh   # prints exact commands; default port 8080
-```
-
-Typical public setup:
-
-```bash
-sudo tailscale funnel --bg --yes 8080
-```
-
-Your tool base URL will look like **`https://<your-machine>.<tailnet>.ts.net`** (check `tailscale funnel status`).
-
-### 4) Point Vapi at your tools URL
-
-Set the assistant **`serverUrl`** to:
+3. Set Vapi assistant `serverUrl` to:
 
 ```text
-https://<your-machine>.<tailnet>.ts.net/api/tools
+https://<your-machine>.<tailnet>.ts.net/functions/v1/webhook
 ```
 
-Edit `vapi/riley-assistant.json` (`serverUrl` field), then deploy with the **Vapi CLI**:
+4. Push assistant and sync tool auth:
 
 ```bash
-curl -sSL https://vapi.ai/install.sh | bash
-vapi login
-export VAPI_API_KEY="..."   # from Vapi dashboard
-
-./vapi/deploy-vapi.sh
+./scripts/vapi/push-assistant-and-sync-tools.sh
 ```
 
-Or patch only the assistant:
+Or do Supabase + Vapi CLI wiring in one step:
 
 ```bash
-vapi assistant update 450435e9-4562-4ddd-8429-54584d3285a7 --config vapi/riley-assistant.json
+./scripts/vapi/connect-supabase-vapi.sh
 ```
 
-(Replace with your assistant id if different.)
-
-### 5) Tool authentication (Bearer)
-
-If you set **`TOOL_API_KEY`** in `vapi-backend/.env` (or repo `.env`), push the same secret to Vapi’s tool server headers:
+5. Verify health and tool-call reachability:
 
 ```bash
-./vapi/sync-tool-auth.sh
+./scripts/vapi-healthcheck.sh --public
 ```
 
-### 6) Verify
+## Useful Commands
 
-```bash
-./vapi-healthcheck.sh --public   # needs PUBLIC_BASE_URL=https://<same-as-serverUrl-without-/api/tools>
-```
+- `./scripts/launch-vapi.sh`: Bring up local data services and seed schedule
+- `./scripts/tailscale-expose-vapi.sh`: Print Funnel/Serve commands
+- `./scripts/build-test-local.sh`: Validate serverless local runtime prerequisites
 
----
+## Notes
 
-## Other commands
-
-| Script | Purpose |
-|--------|---------|
-| `./build-test-local.sh` | `go build` + `go test` for `vapi-backend` |
-| `./stop-vapi-go.sh` | Stop local Go processes |
-| `./setup-local-databases.sh` | Init DBs without Docker (optional) |
-
-## Stack
-
-- **Go** — local tool server only  
-- **PostgreSQL + MongoDB** — Docker Compose  
-- **Tailscale Funnel** — on the **same host** as Go; exposes `127.0.0.1:8080` as HTTPS  
-- **Vapi CLI** — deploy assistant + `serverUrl`; **sync-tool-auth** — Bearer for tools  
+- If `TOOL_API_KEY` is set in `.env`, webhook requests must include `Authorization: Bearer <TOOL_API_KEY>`.
+- `PUBLIC_BASE_URL` should be the tunnel base URL without trailing slash.
 
 ## License
 

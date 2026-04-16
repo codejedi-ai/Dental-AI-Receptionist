@@ -6,7 +6,7 @@
 
 Module 3 handles the **appointment booking conversation flow**. It receives classified intent from **Module 2** and guides the patient through collecting all required fields before booking.
 
-> **Status:** Placeholder — the Go implementation exists in `vapi-backend/internal/modules/appointmentbooking/booking.go`. See [Page 15 — Evaluation](15-evaluation-technical-challenges.md) for known issues and fixes.
+> **Status:** Migrated — appointment booking runtime is now implemented in Supabase Edge Function handlers under `supabase/functions/_shared/function-call/dentalTools.ts`.
 
 ---
 

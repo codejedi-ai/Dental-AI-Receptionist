@@ -30,9 +30,9 @@ def main():
 
     # Create placeholder patient for imported appointments
     cur.execute("""
-        INSERT INTO patients (name, phone, email)
+        INSERT INTO patients (name, mobile, email)
         VALUES ('Existing Booking', '0000000000', NULL)
-        ON CONFLICT (phone) DO UPDATE SET name = EXCLUDED.name
+        ON CONFLICT (name, mobile) DO UPDATE SET name = EXCLUDED.name
         RETURNING id
     """)
     placeholder_patient_id = cur.fetchone()[0]

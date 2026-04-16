@@ -1,6 +1,6 @@
 version: "3.9"
 # Docker is only for these two database services. Nothing else is containerized.
-# Go backend: ./run-vapi-local.sh on the host (localhost:5432 / :27017 via published ports).
+# Runtime webhook handler is Supabase Edge Functions (see ./scripts/run-vapi-local.sh).
 
 networks:
   dental-internal:

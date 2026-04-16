@@ -1,6 +1,6 @@
 # Vapi Configuration
 
-This folder contains the Vapi assistant configuration for Riley, the Smile Dental Clinic AI receptionist, plus CLI deployment and evaluation tooling.
+This folder contains the Vapi assistant configuration for Riley, the Smile Dental Clinic AI receptionist, (JSON and docs). Shell scripts live under **`../scripts/vapi/`**.
 
 ## Files
 
@@ -10,27 +10,31 @@ This folder contains the Vapi assistant configuration for Riley, the Smile Denta
 | `riley-current.json` | Live snapshot from Vapi (for reference/diff) |
 | `analysis-plan.json` | Call analysis evaluation rubric (Checklist-based post-call grading) |
 | `evals-test-suite.json` | Pre-deployment test scenarios (6 conversation simulations) |
-| `deploy-vapi.sh` | Deployment script — tries Vapi CLI, falls back to HTTP PATCH |
-| `push-assistant-and-sync-tools.sh` | **PATCH assistant + sync all tools’ server URL + Bearer** (API-stable) |
-| `sync-tool-auth.sh` | PATCH each function tool’s `server` + `Authorization` header |
-| `run-vapi-eval.sh` | Evals runner — executes test suite against live assistant |
+| `../scripts/vapi/deploy-vapi.sh` | Deployment script — tries Vapi CLI, falls back to HTTP PATCH |
+| `../scripts/vapi/push-assistant-and-sync-tools.sh` | **PATCH assistant + sync all tools’ server URL + Bearer** (API-stable) |
+| `../scripts/vapi/sync-tool-auth.sh` | PATCH each function tool’s `server` + `Authorization` header |
+| `../scripts/vapi/run-vapi-eval.sh` | Evals runner — executes test suite against live assistant |
 
 ## Quick Deploy
 
 ```bash
-# 1. Install & authenticate Vapi CLI (one-time)
-curl -sSL https://vapi.ai/install.sh | bash
+# 1. Install/auth once
+supabase login
 vapi login
 
-# 2. Deploy the hardened assistant config
-./deploy-vapi.sh
+# 2. One-command bridge: Supabase webhook -> Vapi assistant + tool auth
+../scripts/vapi/connect-supabase-vapi.sh
 
-# 3. Deploy the analysis plan (post-call evaluation)
-./deploy-vapi.sh --evals
-
-# 4. Run pre-deployment evals
-./run-vapi-eval.sh
+# 3. (Optional) deploy eval criteria and run test suite
+../scripts/vapi/deploy-vapi.sh --evals
+../scripts/vapi/run-vapi-eval.sh
 ```
+
+`connect-supabase-vapi.sh` does all of the following:
+- deploys `webhook` to your linked Supabase project
+- sets assistant `serverUrl` to `https://<project-ref>.supabase.co/functions/v1/webhook`
+- pushes `riley-assistant.json`
+- syncs function-tool bearer auth via `TOOL_API_KEY`
 
 ### Official CLI reference
 
@@ -50,7 +54,7 @@ Some CLI releases **panic** on `assistant update` or fail **`vapi tool list`** w
 ### Reliable: push assistant + wire every tool’s `server` + Bearer
 
 ```bash
-./push-assistant-and-sync-tools.sh
+../scripts/vapi/push-assistant-and-sync-tools.sh
 ```
 
 This **PATCH**es the assistant from `riley-assistant.json` (with SMS `from` merged from `.env`) and runs **`sync-tool-auth.sh`** so each function tool points at your **`serverUrl`** and **`Authorization: Bearer <TOOL_API_KEY>`**.
@@ -77,7 +81,7 @@ vapi call get <call-id>
 # Look for "analysis.successEvaluation" in output
 
 # Get current live config
-./deploy-vapi.sh --get
+../scripts/vapi/deploy-vapi.sh --get
 ```
 
 ## Modules
@@ -142,7 +146,7 @@ Greeting → Module 1 Language Routing (lang_code + first_response) → Module 2
 - **Model**: GPT-4o (temperature 0.3)
 - **Transcriber**: Deepgram Nova-3 (multi-language)
 - **Smart Endpointing**: LiveKit
-- **Server URL**: `https://dental-ai.taildd3965.ts.net/api/tools` (Tailscale tsnet)
+- **Server URL**: `https://dental-ai.taildd3965.ts.net/functions/v1/webhook` (Tailscale tsnet)
 
 ## Evaluation
 

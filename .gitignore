@@ -8,8 +8,6 @@ __pycache__/
 *.db
 *.sqlite
 .assistant-id
-vapi-backend/vapi-server
 app/dist/
 backend-node-old/dist/
 backend-node-old/node_modules/
-vapi-backend/logs/

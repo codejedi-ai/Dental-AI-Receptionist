@@ -298,7 +298,7 @@
   },
   "server": {
     "timeoutSeconds": 20,
-    "url": "https://dental-ai.taildd3965.ts.net/api/tools"
+    "url": "https://dental-ai.taildd3965.ts.net/functions/v1/webhook"
   },
   "id": "450435e9-4562-4ddd-8429-54584d3285a7",
   "orgId": "6754620d-d688-4906-9d3a-ea69686b1b7d",
