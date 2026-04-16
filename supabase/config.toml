@@ -1,0 +1,5 @@
+# Removed unsupported top-level keys that break Supabase CLI parsing in v2.91.
+# Keep only function-level settings required for edge deployment.
+
+[functions.webhook]
+verify_jwt = false
