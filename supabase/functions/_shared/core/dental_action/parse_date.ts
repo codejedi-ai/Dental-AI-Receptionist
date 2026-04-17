@@ -4,7 +4,7 @@ import { asObj, parseDateText } from "../lib/dentalHelpers.ts";
 export const parse_date = new Tool(
   "parse_date",
   "Convert natural-language or relative dates to YYYY-MM-DD (Toronto).",
-  "Use before check_availability when the user says 'tomorrow', weekday names, or Chinese equivalents. On failure, ask for YYYY-MM-DD.",
+  "Use before check_availability when the user says natural date text. If month/year are missing, default to current Toronto month/year.",
   {
     type: "object",
     properties: {
@@ -25,7 +25,8 @@ export const parse_date = new Tool(
     const parsed = parseDateText(input);
     if (!parsed) {
       return {
-        result: `I couldn't parse '${input}'. Please use YYYY-MM-DD format.`,
+        result:
+          "I could not understand that date yet. Please say it like 'May 6' or '2024-05-06'.",
       };
     }
     return { result: parsed };

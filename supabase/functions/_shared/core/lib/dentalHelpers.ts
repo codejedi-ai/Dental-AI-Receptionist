@@ -73,6 +73,13 @@ export function parseDateText(input: string): string | null {
   const raw = input.trim();
   if (!raw) return null;
   if (/^\d{4}-\d{2}-\d{2}$/.test(raw)) return raw;
+  if (/^\d{4}\/\d{1,2}\/\d{1,2}$/.test(raw)) {
+    const [y, m, d] = raw.split("/").map((v) => Number(v));
+    if (Number.isInteger(y) && Number.isInteger(m) && Number.isInteger(d)) {
+      const normalized = normalizeYmd(y, m, d);
+      if (normalized) return normalized;
+    }
+  }
 
   const lower = raw.toLowerCase();
   const today = torontoNow();
@@ -110,11 +117,86 @@ export function parseDateText(input: string): string | null {
     return out.toISOString().slice(0, 10);
   }
 
+  const monthDayMatch = lower.match(
+    /^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,\s*(\d{4}))?$/,
+  );
+  if (monthDayMatch) {
+    const monthMap: Record<string, number> = {
+      jan: 1,
+      january: 1,
+      feb: 2,
+      february: 2,
+      mar: 3,
+      march: 3,
+      apr: 4,
+      april: 4,
+      may: 5,
+      jun: 6,
+      june: 6,
+      jul: 7,
+      july: 7,
+      aug: 8,
+      august: 8,
+      sep: 9,
+      sept: 9,
+      september: 9,
+      oct: 10,
+      october: 10,
+      nov: 11,
+      november: 11,
+      dec: 12,
+      december: 12,
+    };
+    const month = monthMap[monthDayMatch[1]];
+    const day = Number(monthDayMatch[2]);
+    const year = monthDayMatch[3] ? Number(monthDayMatch[3]) : out.getUTCFullYear();
+    const normalized = normalizeYmd(year, month, day);
+    if (normalized) return normalized;
+  }
+
+  const numericMonthDayMatch = raw.match(/^(\d{1,2})[\/-](\d{1,2})(?:[\/-](\d{4}))?$/);
+  if (numericMonthDayMatch) {
+    const month = Number(numericMonthDayMatch[1]);
+    const day = Number(numericMonthDayMatch[2]);
+    const year = numericMonthDayMatch[3]
+      ? Number(numericMonthDayMatch[3])
+      : out.getUTCFullYear();
+    const normalized = normalizeYmd(year, month, day);
+    if (normalized) return normalized;
+  }
+
+  const dayOnlyMatch = raw.match(/^(\d{1,2})(?:st|nd|rd|th)?$/i);
+  if (dayOnlyMatch) {
+    const day = Number(dayOnlyMatch[1]);
+    const month = out.getUTCMonth() + 1;
+    const year = out.getUTCFullYear();
+    const normalized = normalizeYmd(year, month, day);
+    if (normalized) return normalized;
+  }
+
   const parsed = new Date(raw);
   if (!Number.isNaN(parsed.getTime())) {
     return parsed.toISOString().slice(0, 10);
   }
   return null;
+}
+
+function normalizeYmd(year: number, month: number, day: number): string | null {
+  if (!Number.isInteger(year) || !Number.isInteger(month) || !Number.isInteger(day)) {
+    return null;
+  }
+  if (month < 1 || month > 12 || day < 1 || day > 31) {
+    return null;
+  }
+  const dt = new Date(Date.UTC(year, month - 1, day));
+  if (
+    dt.getUTCFullYear() !== year ||
+    dt.getUTCMonth() + 1 !== month ||
+    dt.getUTCDate() !== day
+  ) {
+    return null;
+  }
+  return dt.toISOString().slice(0, 10);
 }
 
 export async function getDentistsRaw(): Promise<Array<{ id: number; name: string }>> {

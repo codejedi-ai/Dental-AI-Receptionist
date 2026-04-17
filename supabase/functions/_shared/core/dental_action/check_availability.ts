@@ -3,6 +3,7 @@ import {
   asObj,
   getBookedTimes,
   getDentistsRaw,
+  parseDateText,
   SATURDAY_SLOTS,
   torontoNow,
   toAmPm,
@@ -31,16 +32,18 @@ export const check_availability = new Tool(
   async (parameters) => {
     try {
       const a = asObj(parameters);
-      const date = String(a.date ?? a.appointmentDate ?? "").trim();
+      const rawDate = String(a.date ?? a.appointmentDate ?? "").trim();
+      const date = parseDateText(rawDate) ?? rawDate;
       const dentistName = String(a.dentist ?? "").trim();
       if (!date) {
         return {
-          result: "I need a date in YYYY-MM-DD format to check availability.",
+          result: "Please share the appointment date you want me to check.",
         };
       }
       if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
         return {
-          result: `Invalid date format: ${date}. Please use YYYY-MM-DD.`,
+          result:
+            "I can check availability once I have a date. You can say something like 'May 6' or 'next Tuesday'.",
         };
       }
 
