@@ -12,6 +12,7 @@ export default defaultToolHandlers;
 export const {
   health_check,
   get_current_date,
+  get_current_datetime,
   get_clinic_info,
   get_dentists,
   parse_date,

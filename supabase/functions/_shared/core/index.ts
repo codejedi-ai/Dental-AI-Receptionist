@@ -5,6 +5,7 @@ import { cancel_appointment } from "./dental_action/cancel_appointment.ts";
 import { check_availability } from "./dental_action/check_availability.ts";
 import { get_clinic_info } from "./dental_action/get_clinic_info.ts";
 import { get_current_date } from "./dental_action/get_current_date.ts";
+import { get_current_datetime } from "./dental_action/get_current_datetime.ts";
 import { get_dentists } from "./dental_action/get_dentists.ts";
 import { get_next_available_dates } from "./dental_action/get_next_available_dates.ts";
 import { health_check } from "./dental_action/health_check.ts";
@@ -14,6 +15,7 @@ import { send_booking_confirmation } from "./dental_action/send_booking_confirma
 const allTools: Tool[] = [
   health_check,
   get_current_date,
+  get_current_datetime,
   get_clinic_info,
   get_dentists,
   parse_date,

@@ -29,13 +29,17 @@ echo "Pushing local database migrations to remote..."
 "${SUPABASE_CMD[@]}" db push --linked
 
 echo "Deploying all local edge functions to remote..."
-mapfile -t FUNCTION_DIRS < <(
-  rg --files "${ROOT_DIR}/supabase/functions" \
-    | rg '/index\.ts$' \
-    | rg -v '/_shared/' \
-    | sed -E 's|.*/supabase/functions/([^/]+)/index\.ts$|\1|' \
-    | sort -u
-)
+FUNCTION_DIRS=()
+for index_file in "${ROOT_DIR}"/supabase/functions/*/index.ts; do
+  if [[ ! -f "${index_file}" ]]; then
+    continue
+  fi
+  fn_dir="$(basename "$(dirname "${index_file}")")"
+  if [[ "${fn_dir}" == "_shared" ]]; then
+    continue
+  fi
+  FUNCTION_DIRS+=("${fn_dir}")
+done
 
 if [[ ${#FUNCTION_DIRS[@]} -eq 0 ]]; then
   echo "No deployable edge functions found under supabase/functions."
