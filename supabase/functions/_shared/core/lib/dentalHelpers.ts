@@ -82,22 +82,23 @@ export function parseDateText(input: string): string | null {
   }
 
   const lower = raw.toLowerCase();
+  const normalizedLower = normalizeMonthTypos(lower);
   const today = torontoNow();
   const out = new Date(today);
 
-  if (lower === "today" || lower === "今天") {
+  if (normalizedLower === "today" || normalizedLower === "今天") {
     return out.toISOString().slice(0, 10);
   }
-  if (lower === "tomorrow" || lower === "明天") {
+  if (normalizedLower === "tomorrow" || normalizedLower === "明天") {
     out.setUTCDate(out.getUTCDate() + 1);
     return out.toISOString().slice(0, 10);
   }
-  if (lower === "day after tomorrow" || lower === "后天") {
+  if (normalizedLower === "day after tomorrow" || normalizedLower === "后天") {
     out.setUTCDate(out.getUTCDate() + 2);
     return out.toISOString().slice(0, 10);
   }
 
-  const nextDayMatch = lower.match(
+  const nextDayMatch = normalizedLower.match(
     /^(next\s+)?(monday|tuesday|wednesday|thursday|friday|saturday|sunday)$/,
   );
   if (nextDayMatch) {
@@ -117,7 +118,7 @@ export function parseDateText(input: string): string | null {
     return out.toISOString().slice(0, 10);
   }
 
-  const monthDayMatch = lower.match(
+  const monthDayMatch = normalizedLower.match(
     /^(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:t)?(?:ember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\.?\s+(\d{1,2})(?:st|nd|rd|th)?(?:,\s*(\d{4}))?$/,
   );
   if (monthDayMatch) {
@@ -174,11 +175,27 @@ export function parseDateText(input: string): string | null {
     if (normalized) return normalized;
   }
 
+  // Support organic phrases like "the 17th" or "book me on 17th".
+  const embeddedDayMatch = normalizedLower.match(/\b(?:the\s+)?(\d{1,2})(?:st|nd|rd|th)\b/);
+  if (embeddedDayMatch) {
+    const day = Number(embeddedDayMatch[1]);
+    const month = out.getUTCMonth() + 1;
+    const year = out.getUTCFullYear();
+    const normalized = normalizeYmd(year, month, day);
+    if (normalized) return normalized;
+  }
+
   const parsed = new Date(raw);
   if (!Number.isNaN(parsed.getTime())) {
     return parsed.toISOString().slice(0, 10);
   }
   return null;
+}
+
+function normalizeMonthTypos(input: string): string {
+  return input
+    .replace(/\bspetember\b/g, "september")
+    .replace(/\bsetpember\b/g, "september");
 }
 
 function normalizeYmd(year: number, month: number, day: number): string | null {

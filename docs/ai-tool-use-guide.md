@@ -32,6 +32,7 @@ The router supports these dental_action operations:
 
 - `health_check`
 - `get_current_date`
+- `get_current_datetime`
 - `get_clinic_info`
 - `get_dentists`
 - `parse_date`
@@ -59,6 +60,16 @@ Purpose: get current Toronto date/time for relative scheduling.
 ```json
 {
   "operation": "get_current_date",
+  "payload": {}
+}
+```
+
+### `get_current_datetime`
+Purpose: get current Toronto date + time with precise local timestamp.
+
+```json
+{
+  "operation": "get_current_datetime",
   "payload": {}
 }
 ```
@@ -94,12 +105,30 @@ Purpose: convert natural language date into `YYYY-MM-DD`.
 Inputs:
 - `date_text` (preferred)
 - `dateText` (alias)
+- `day` (optional, integer 1-31)
+- `month` (optional, number 1-12 or month name)
+- `year` (optional, 4-digit)
+
+Defaults:
+- If `month` is missing, current Toronto month is used.
+- If `year` is missing, current Toronto year is used.
+- If day is missing while month/year are present, tool asks for day.
 
 ```json
 {
   "operation": "parse_date",
   "payload": {
     "date_text": "next Tuesday"
+  }
+}
+```
+
+```json
+{
+  "operation": "parse_date",
+  "payload": {
+    "month": "September",
+    "year": 2026
   }
 }
 ```
@@ -207,7 +236,7 @@ Purpose: acknowledge confirmation delivery message.
 
 For booking conversations, use this order:
 
-1. `get_current_date` (if user gave relative dates)
+1. `get_current_datetime` (or `get_current_date`) if user gave relative dates
 2. `parse_date` (if input is natural language date)
 3. `check_availability`
 4. `book_appointment`
